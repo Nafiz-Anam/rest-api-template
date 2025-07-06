@@ -1,5 +1,15 @@
-export { default as authController } from './auth.controller';
-export { default as userController } from './user.controller';
-export { default as healthController } from './health.controller';
-export { default as twoFactorController } from './twoFactor.controller';
-export { default as deviceController } from './device.controller';
+import authController from './auth.controller';
+import userController from './user.controller';
+import twoFactorController from './twoFactor.controller';
+import deviceController from './device.controller';
+import profileController from './profile.controller';
+import healthController from './health.controller';
+
+export {
+  authController,
+  userController,
+  twoFactorController,
+  deviceController,
+  profileController,
+  healthController,
+};

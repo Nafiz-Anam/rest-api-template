@@ -3,7 +3,20 @@ import httpStatus from 'http-status';
 import ApiError from '../utils/ApiError';
 import { roleRights } from '../config/roles';
 import { NextFunction, Request, Response } from 'express';
-import { User } from '@prisma/client';
+import { User } from '../types/response';
+import jwt from 'jsonwebtoken';
+import config from '../config/config';
+import prisma from '../client';
+import { Role } from '@prisma/client';
+
+// Extend Express Request to include user
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
 
 const verifyCallback =
   (
@@ -45,4 +58,29 @@ const auth =
       .catch(err => next(err));
   };
 
+const authByRole = (requiredRole?: Role) => async (req: Request, res: Response, next: NextFunction) => {
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  if (!token) {
+    return next(new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate'));
+  }
+  try {
+    const payload = jwt.verify(token, config.jwt.secret) as any;
+    const user = await prisma.user.findUnique({ where: { id: payload.sub as string } });
+    if (!user) {
+      return next(new ApiError(httpStatus.UNAUTHORIZED, 'User not found'));
+    }
+    req.user = user as User;
+    if (requiredRole && user.role !== requiredRole) {
+      return next(new ApiError(httpStatus.FORBIDDEN, 'Forbidden'));
+    }
+    next();
+  } catch (err) {
+    next(new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate'));
+  }
+};
+
+export { auth, authByRole };
 export default auth;

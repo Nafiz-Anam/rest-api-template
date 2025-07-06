@@ -1,195 +1,99 @@
 import httpStatus from 'http-status';
-import moment from 'moment';
+import { TokenType } from '@prisma/client';
 import tokenService from './token.service';
 import userService from './user.service';
-import securityService from './security.service';
 import twoFactorService from './twoFactor.service';
 import ApiError from '../utils/ApiError';
-import { TokenType, User } from '@prisma/client';
-import prisma from '../client';
 import { encryptPassword, isPasswordMatch } from '../utils/encryption';
-import { AuthTokensResponse } from '../types/response';
-import exclude from '../utils/exclude';
 import { Request } from 'express';
+import moment from 'moment';
 import config from '../config/config';
 
 /**
  * Login with username and password
  * @param {string} email
  * @param {string} password
- * @param {Request} req - Express request object for logging
- * @returns {Promise<Omit<User, 'password'> | { requiresTwoFactor: true; userId: number }>}
+ * @param {Request} req
+ * @returns {Promise<Object>}
  */
-const loginUserWithEmailAndPassword = async (
-  email: string,
-  password: string,
-  req: Request
-): Promise<Omit<User, 'password'> | { requiresTwoFactor: true; userId: number }> => {
-  const user = await userService.getUserByEmail(email, [
-    'id',
-    'email',
-    'name',
-    'password',
-    'role',
-    'isEmailVerified',
-    'createdAt',
-    'updatedAt',
-    'failedLoginAttempts',
-    'lockoutUntil',
-    'lastLoginAt',
-    'twoFactorEnabled',
-    'twoFactorSecret',
-    'twoFactorBackupCodes',
-    'twoFactorVerified',
-  ]);
-
-  // Check if account is locked
-  if (user?.lockoutUntil && user.lockoutUntil > new Date()) {
-    await securityService.logLoginFailed(email, req, 'Account locked');
-    throw new ApiError(
-      httpStatus.TOO_MANY_REQUESTS,
-      `Account temporarily locked. Please try again after ${new Date(user.lockoutUntil).toLocaleString()}`
-    );
+const loginUserWithEmailAndPassword = async (email: string, password: string, req: Request) => {
+  const user = await userService.getUserByEmail(email);
+  if (!user) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
   }
 
-  if (!user || !(await isPasswordMatch(password, user.password as string))) {
-    // Increment failed login attempts
-    if (user) {
-      const failedAttempts = (user.failedLoginAttempts || 0) + 1;
-      let lockoutUntil = null;
+  // Ensure user has required properties
+  if (!user.id || !user.password) {
+    throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, 'Invalid user data');
+  }
 
-      // Lock account after 5 failed attempts for 15 minutes
-      if (failedAttempts >= 5) {
-        lockoutUntil = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-      }
-
-      await userService.updateUserById(user.id, {
-        failedLoginAttempts: failedAttempts,
-        lockoutUntil,
-      } as any); // Type assertion for new fields
-    }
-
-    await securityService.logLoginFailed(email, req, 'Invalid credentials');
+  if (!(await isPasswordMatch(password, user.password))) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect email or password');
+  }
+
+  // Check if account is locked
+  if (user.isLocked) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Account is locked. Please contact support.');
+  }
+
+  // Check if account is active
+  if (!user.isActive) {
+    throw new ApiError(httpStatus.FORBIDDEN, 'Account is deactivated. Please contact support.');
   }
 
   // Reset failed login attempts on successful login
   if (user.failedLoginAttempts > 0) {
-    await userService.updateUserById(user.id, {
-      failedLoginAttempts: 0,
-      lockoutUntil: null,
-    } as any); // Type assertion for new fields
+    await userService.updateUserById(user.id, { failedLoginAttempts: 0, lockoutUntil: null });
   }
 
-  // Check if 2FA is enabled
-  if (user.twoFactorEnabled) {
-    // Return indication that 2FA is required
-    return { requiresTwoFactor: true, userId: user.id };
-  }
+  // Update last login
+  await userService.updateUserById(user.id, { lastLoginAt: new Date() });
 
-  // Update last login time
-  await userService.updateUserById(user.id, {
-    lastLoginAt: new Date(),
-  } as any);
+  // Generate tokens - simplified for now
+  const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
+  const accessToken = tokenService.generateToken(user.id, accessTokenExpires, TokenType.ACCESS);
 
-  const userWithoutPassword = exclude(user, ['password']);
-  await securityService.logLoginSuccess(userWithoutPassword as any, req);
-  
-  return userWithoutPassword;
-};
+  const refreshTokenExpires = moment().add(config.jwt.refreshExpirationDays, 'days');
+  const refreshToken = tokenService.generateToken(user.id, refreshTokenExpires, TokenType.REFRESH);
 
-/**
- * Complete login with 2FA verification
- * @param {number} userId
- * @param {string} twoFactorToken
- * @param {Request} req - Express request object for logging
- * @returns {Promise<Omit<User, 'password'>>}
- */
-const completeLoginWithTwoFactor = async (
-  userId: number,
-  twoFactorToken: string,
-  req: Request
-): Promise<Omit<User, 'password'>> => {
-  const user = await userService.getUserById(userId);
-  
-  if (!user) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
-  }
-
-  if (!user.twoFactorEnabled) {
-    throw new ApiError(httpStatus.BAD_REQUEST, '2FA is not enabled for this account');
-  }
-
-  // Verify 2FA token
-  const isValid = await twoFactorService.verifyTwoFactor(userId, twoFactorToken);
-  
-  if (!isValid) {
-    await securityService.logLoginFailed(user.email, req, 'Invalid 2FA token');
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid 2FA token');
-  }
-
-  // Update last login time
-  await userService.updateUserById(userId, {
-    lastLoginAt: new Date(),
-  } as any);
-
-  const userWithoutPassword = exclude(user, ['password']);
-  await securityService.logLoginSuccess(userWithoutPassword as any, req);
-  
-  return userWithoutPassword;
+  return {
+    access: {
+      token: accessToken,
+      expires: accessTokenExpires.toDate(),
+    },
+    refresh: {
+      token: refreshToken,
+      expires: refreshTokenExpires.toDate(),
+    },
+  };
 };
 
 /**
  * Logout
  * @param {string} refreshToken
- * @param {Request} req - Express request object for logging
- * @returns {Promise<void>}
+ * @returns {Promise}
  */
-const logout = async (refreshToken: string, req: Request): Promise<void> => {
-  const refreshTokenData = await prisma.token.findFirst({
-    where: {
-      token: refreshToken,
-      type: TokenType.REFRESH,
-      blacklisted: false,
-    },
-    include: {
-      user: true,
-    },
-  });
-  
-  if (!refreshTokenData) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Not found');
-  }
-
-  // Log logout event
-  if (refreshTokenData.user) {
-    await securityService.logLogout(refreshTokenData.user, req);
-  }
-
-  await prisma.token.delete({ where: { id: refreshTokenData.id } });
+const logout = async (refreshToken: string) => {
+  const refreshTokenDoc = await tokenService.verifyToken(refreshToken, TokenType.REFRESH);
+  await tokenService.blacklistToken(refreshTokenDoc.id);
 };
 
 /**
  * Refresh auth tokens
  * @param {string} refreshToken
- * @returns {Promise<AuthTokensResponse>}
+ * @param {Request} req
+ * @returns {Promise<Object>}
  */
-const refreshAuth = async (refreshToken: string): Promise<AuthTokensResponse> => {
+const refreshAuth = async (refreshToken: string, req: Request) => {
   try {
-    const refreshTokenData = await tokenService.verifyToken(refreshToken, TokenType.REFRESH);
-    const { userId } = refreshTokenData;
-    await prisma.token.delete({ where: { id: refreshTokenData.id } });
-    // Note: For refresh tokens, we don't have access to the original request
-    // So we'll create a minimal response without device info
-    const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
-    const accessToken = tokenService.generateToken(userId, accessTokenExpires, TokenType.ACCESS);
-    
-    return {
-      access: {
-        token: accessToken,
-        expires: accessTokenExpires.toDate(),
-      },
-    };
+    const refreshTokenDoc = await tokenService.verifyToken(refreshToken, TokenType.REFRESH);
+    const user = await userService.getUserById(refreshTokenDoc.userId);
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
+    const tokens = await tokenService.generateAuthTokens(user as any, req);
+    await tokenService.blacklistToken(refreshTokenDoc.id);
+    return tokens;
   } catch (error) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate');
   }
@@ -199,33 +103,27 @@ const refreshAuth = async (refreshToken: string): Promise<AuthTokensResponse> =>
  * Reset password
  * @param {string} resetPasswordToken
  * @param {string} newPassword
- * @param {Request} req - Express request object for logging
- * @returns {Promise<void>}
+ * @param {Request} req
+ * @returns {Promise}
  */
-const resetPassword = async (
-  resetPasswordToken: string, 
-  newPassword: string, 
-  req: Request
-): Promise<void> => {
+const resetPassword = async (resetPasswordToken: string, newPassword: string, req: Request) => {
   try {
-    const resetPasswordTokenData = await tokenService.verifyToken(
+    const resetPasswordTokenDoc = await tokenService.verifyToken(
       resetPasswordToken,
       TokenType.RESET_PASSWORD
     );
-    const user = await userService.getUserById(resetPasswordTokenData.userId);
+    const user = await userService.getUserById(resetPasswordTokenDoc.userId);
     if (!user) {
-      throw new Error();
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
     }
-    const encryptedPassword = await encryptPassword(newPassword);
-    await userService.updateUserById(user.id, { 
-      password: encryptedPassword,
-      failedLoginAttempts: 0, // Reset failed attempts
-      lockoutUntil: null, // Unlock account
-    } as any); // Type assertion for new fields
-    await prisma.token.deleteMany({ where: { userId: user.id, type: TokenType.RESET_PASSWORD } });
-    
-    // Log password reset completion
-    await securityService.logPasswordResetCompleted(user, req);
+
+    const hashedPassword = await encryptPassword(newPassword);
+    await userService.updateUserById((user as any).id, {
+      password: hashedPassword,
+      passwordChangedAt: new Date(),
+    });
+
+    await tokenService.blacklistToken(resetPasswordTokenDoc.id);
   } catch (error) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Password reset failed');
   }
@@ -234,30 +132,155 @@ const resetPassword = async (
 /**
  * Verify email
  * @param {string} verifyEmailToken
- * @returns {Promise<void>}
+ * @returns {Promise}
  */
-const verifyEmail = async (verifyEmailToken: string): Promise<void> => {
+const verifyEmail = async (verifyEmailToken: string) => {
   try {
-    const verifyEmailTokenData = await tokenService.verifyToken(
+    const verifyEmailTokenDoc = await tokenService.verifyToken(
       verifyEmailToken,
       TokenType.VERIFY_EMAIL
     );
-    await prisma.token.deleteMany({
-      where: { userId: verifyEmailTokenData.userId, type: TokenType.VERIFY_EMAIL },
-    });
-    await userService.updateUserById(verifyEmailTokenData.userId, { isEmailVerified: true });
+    const user = await userService.getUserById(verifyEmailTokenDoc.userId);
+    if (!user) {
+      throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+    }
+    await userService.updateUserById((user as any).id, { isEmailVerified: true });
+    await tokenService.blacklistToken(verifyEmailTokenDoc.id);
   } catch (error) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Email verification failed');
   }
 };
 
+/**
+ * Change password
+ * @param {string} userId
+ * @param {string} oldPassword
+ * @param {string} newPassword
+ * @param {Request} req
+ * @returns {Promise}
+ */
+const changePassword = async (
+  userId: string,
+  oldPassword: string,
+  newPassword: string,
+  req: Request
+) => {
+  const user = await userService.getUserById(userId);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  if (!(await isPasswordMatch(oldPassword, (user as any).password))) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect password');
+  }
+
+  const hashedPassword = await encryptPassword(newPassword);
+  await userService.updateUserById(userId, {
+    password: hashedPassword,
+    passwordChangedAt: new Date(),
+  });
+};
+
+/**
+ * Setup two-factor authentication
+ * @param {string} userId
+ * @returns {Promise<Object>}
+ */
+const setupTwoFactor = async (userId: string) => {
+  return twoFactorService.setupTwoFactor(userId);
+};
+
+/**
+ * Enable two-factor authentication
+ * @param {string} userId
+ * @param {string} token
+ * @param {Request} req
+ * @returns {Promise}
+ */
+const enableTwoFactor = async (userId: string, token: string, req: Request) => {
+  return twoFactorService.enableTwoFactor(userId, token);
+};
+
+/**
+ * Disable two-factor authentication
+ * @param {string} userId
+ * @param {string} token
+ * @param {Request} req
+ * @returns {Promise}
+ */
+const disableTwoFactor = async (userId: string, token: string, req: Request) => {
+  return twoFactorService.disableTwoFactor(userId, token);
+};
+
+/**
+ * Get two-factor authentication status
+ * @param {string} userId
+ * @returns {Promise<Object>}
+ */
+const getTwoFactorStatus = async (userId: string) => {
+  return twoFactorService.getTwoFactorStatus(userId);
+};
+
+/**
+ * Regenerate backup codes
+ * @param {string} userId
+ * @param {string} token
+ * @returns {Promise<Object>}
+ */
+const regenerateBackupCodes = async (userId: string, token: string) => {
+  return twoFactorService.regenerateBackupCodes(userId, token);
+};
+
+/**
+ * Check account lockout status
+ * @param {string} email
+ * @returns {Promise<Object>}
+ */
+const checkAccountLockout = async (email: string) => {
+  const user = await userService.getUserByEmail(email);
+  if (!user) {
+    return { isLocked: false, lockoutUntil: null, failedAttempts: 0 };
+  }
+
+  return {
+    isLocked: user.isLocked,
+    lockoutUntil: user.lockoutUntil,
+    failedAttempts: user.failedLoginAttempts,
+  };
+};
+
+/**
+ * Verify two-factor authentication token
+ * @param {string} userId
+ * @param {string} token
+ * @returns {Promise<boolean>}
+ */
+const verifyTwoFactorToken = async (userId: string, token: string) => {
+  return twoFactorService.verifyToken(userId, token);
+};
+
+/**
+ * Get user by ID
+ * @param {string} userId
+ * @returns {Promise<User>}
+ */
+const getUserById = async (userId: string) => {
+  return userService.getUserById(userId);
+};
+
 export default {
   loginUserWithEmailAndPassword,
-  completeLoginWithTwoFactor,
-  isPasswordMatch,
-  encryptPassword,
   logout,
   refreshAuth,
   resetPassword,
   verifyEmail,
+  changePassword,
+  setupTwoFactor,
+  enableTwoFactor,
+  disableTwoFactor,
+  getTwoFactorStatus,
+  regenerateBackupCodes,
+  checkAccountLockout,
+  verifyTwoFactorToken,
+  getUserById,
 };

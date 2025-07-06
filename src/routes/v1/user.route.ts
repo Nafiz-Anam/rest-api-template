@@ -3,30 +3,425 @@ import auth from '../../middlewares/auth';
 import validate from '../../middlewares/validate';
 import { userValidation } from '../../validations';
 import { userController } from '../../controllers';
-import { sensitiveOperationLimiter } from '../../middlewares/rateLimiter';
+import { Role } from '../../config/roles';
 
 const router = express.Router();
 
-router
-  .route('/')
-  .post(auth('manageUsers'), validate(userValidation.createUser), userController.createUser)
-  .get(auth('getUsers'), validate(userValidation.getUsers), userController.getUsers);
+/**
+ * @route POST /v1/users
+ * @desc Create user (Admin only)
+ * @access Private (Admin only)
+ */
+router.post(
+  '/',
+  auth(Role.ADMIN),
+  validate(userValidation.createUser),
+  userController.createUser
+);
 
-router
-  .route('/:userId')
-  .get(auth('getUsers'), validate(userValidation.getUser), userController.getUser)
-  .patch(
-    auth('manageUsers'), 
-    sensitiveOperationLimiter,
-    validate(userValidation.updateUser), 
-    userController.updateUser
-  )
-  .delete(
-    auth('manageUsers'), 
-    sensitiveOperationLimiter,
-    validate(userValidation.deleteUser), 
-    userController.deleteUser
-  );
+/**
+ * @route GET /v1/users
+ * @desc Get users (Admin only)
+ * @access Private (Admin only)
+ */
+router.get(
+  '/',
+  auth(Role.ADMIN),
+  validate(userValidation.getUsers),
+  userController.getUsers
+);
+
+/**
+ * @route GET /v1/users/:userId
+ * @desc Get user
+ * @access Private
+ */
+router.get(
+  '/:userId',
+  auth(),
+  validate(userValidation.getUser),
+  userController.getUser
+);
+
+/**
+ * @route PATCH /v1/users/:userId
+ * @desc Update user
+ * @access Private
+ */
+router.patch(
+  '/:userId',
+  auth(),
+  validate(userValidation.updateUser),
+  userController.updateUser
+);
+
+/**
+ * @route DELETE /v1/users/:userId
+ * @desc Delete user (Admin only)
+ * @access Private (Admin only)
+ */
+router.delete(
+  '/:userId',
+  auth(Role.ADMIN),
+  validate(userValidation.deleteUser),
+  userController.deleteUser
+);
+
+/**
+ * @route GET /v1/users/:userId/profile
+ * @desc Get user profile
+ * @access Private
+ */
+router.get(
+  '/:userId/profile',
+  auth(),
+  validate(userValidation.getUserProfile),
+  userController.getUserProfile
+);
+
+/**
+ * @route PATCH /v1/users/:userId/profile
+ * @desc Update user profile
+ * @access Private
+ */
+router.patch(
+  '/:userId/profile',
+  auth(),
+  validate(userValidation.updateUserProfile),
+  userController.updateUserProfile
+);
+
+/**
+ * @route GET /v1/users/:userId/preferences
+ * @desc Get user preferences
+ * @access Private
+ */
+router.get(
+  '/:userId/preferences',
+  auth(),
+  validate(userValidation.getUserPreferences),
+  userController.getUserPreferences
+);
+
+/**
+ * @route PATCH /v1/users/:userId/preferences
+ * @desc Update user preferences
+ * @access Private
+ */
+router.patch(
+  '/:userId/preferences',
+  auth(),
+  validate(userValidation.updateUserPreferences),
+  userController.updateUserPreferences
+);
+
+/**
+ * @route GET /v1/users/:userId/privacy
+ * @desc Get user privacy settings
+ * @access Private
+ */
+router.get(
+  '/:userId/privacy',
+  auth(),
+  validate(userValidation.getPrivacySettings),
+  userController.getPrivacySettings
+);
+
+/**
+ * @route PATCH /v1/users/:userId/privacy
+ * @desc Update user privacy settings
+ * @access Private
+ */
+router.patch(
+  '/:userId/privacy',
+  auth(),
+  validate(userValidation.updatePrivacySettings),
+  userController.updatePrivacySettings
+);
+
+/**
+ * @route GET /v1/users/:userId/account-status
+ * @desc Get user account status
+ * @access Private
+ */
+router.get(
+  '/:userId/account-status',
+  auth(),
+  validate(userValidation.getAccountStatus),
+  userController.getAccountStatus
+);
+
+/**
+ * @route GET /v1/users/:userId/stats
+ * @desc Get user statistics
+ * @access Private
+ */
+router.get(
+  '/:userId/stats',
+  auth(),
+  validate(userValidation.getUserStats),
+  userController.getUserStats
+);
+
+/**
+ * @route GET /v1/users/:userId/activity
+ * @desc Get user activity
+ * @access Private
+ */
+router.get(
+  '/:userId/activity',
+  auth(),
+  validate(userValidation.getUserActivity),
+  userController.getUserActivity
+);
+
+/**
+ * @route GET /v1/users/:userId/activity/stats
+ * @desc Get user activity statistics
+ * @access Private
+ */
+router.get(
+  '/:userId/activity/stats',
+  auth(),
+  validate(userValidation.getActivityStats),
+  userController.getActivityStats
+);
+
+/**
+ * @route GET /v1/users/:userId/devices
+ * @desc Get user devices
+ * @access Private
+ */
+router.get(
+  '/:userId/devices',
+  auth(),
+  validate(userValidation.getUserDevices),
+  userController.getUserDevices
+);
+
+/**
+ * @route GET /v1/users/:userId/devices/sessions
+ * @desc Get user device sessions
+ * @access Private
+ */
+router.get(
+  '/:userId/devices/sessions',
+  auth(),
+  validate(userValidation.getDeviceSessions),
+  userController.getDeviceSessions
+);
+
+/**
+ * @route POST /v1/users/:userId/devices/:deviceId/trust
+ * @desc Trust device
+ * @access Private
+ */
+router.post(
+  '/:userId/devices/:deviceId/trust',
+  auth(),
+  validate(userValidation.trustDevice),
+  userController.trustDevice
+);
+
+/**
+ * @route DELETE /v1/users/:userId/devices/:deviceId
+ * @desc Remove device
+ * @access Private
+ */
+router.delete(
+  '/:userId/devices/:deviceId',
+  auth(),
+  validate(userValidation.removeDevice),
+  userController.removeDevice
+);
+
+/**
+ * @route DELETE /v1/users/:userId/devices
+ * @desc Remove all other devices
+ * @access Private
+ */
+router.delete(
+  '/:userId/devices',
+  auth(),
+  validate(userValidation.removeAllOtherDevices),
+  userController.removeAllOtherDevices
+);
+
+/**
+ * @route GET /v1/users/:userId/notifications
+ * @desc Get user notifications
+ * @access Private
+ */
+router.get(
+  '/:userId/notifications',
+  auth(),
+  validate(userValidation.getUserNotifications),
+  userController.getUserNotifications
+);
+
+/**
+ * @route PATCH /v1/users/:userId/notifications/:notificationId/read
+ * @desc Mark notification as read
+ * @access Private
+ */
+router.patch(
+  '/:userId/notifications/:notificationId/read',
+  auth(),
+  validate(userValidation.markNotificationAsRead),
+  userController.markNotificationAsRead
+);
+
+/**
+ * @route PATCH /v1/users/:userId/notifications/read-all
+ * @desc Mark all notifications as read
+ * @access Private
+ */
+router.patch(
+  '/:userId/notifications/read-all',
+  auth(),
+  userController.markAllNotificationsAsRead
+);
+
+/**
+ * @route DELETE /v1/users/:userId/notifications/:notificationId
+ * @desc Delete notification
+ * @access Private
+ */
+router.delete(
+  '/:userId/notifications/:notificationId',
+  auth(),
+  validate(userValidation.deleteNotification),
+  userController.deleteNotification
+);
+
+/**
+ * @route DELETE /v1/users/:userId/notifications/read
+ * @desc Delete read notifications
+ * @access Private
+ */
+router.delete(
+  '/:userId/notifications/read',
+  auth(),
+  userController.deleteReadNotifications
+);
+
+/**
+ * @route GET /v1/users/:userId/notifications/stats
+ * @desc Get notification statistics
+ * @access Private
+ */
+router.get(
+  '/:userId/notifications/stats',
+  auth(),
+  userController.getNotificationStats
+);
+
+/**
+ * @route GET /v1/users/:userId/security-logs
+ * @desc Get user security logs
+ * @access Private
+ */
+router.get(
+  '/:userId/security-logs',
+  auth(),
+  validate(userValidation.getSecurityLogs),
+  userController.getSecurityLogs
+);
+
+/**
+ * @route GET /v1/users/:userId/security-logs/stats
+ * @desc Get security statistics
+ * @access Private
+ */
+router.get(
+  '/:userId/security-logs/stats',
+  auth(),
+  validate(userValidation.getSecurityStats),
+  userController.getSecurityStats
+);
+
+/**
+ * @route GET /v1/users/:userId/public
+ * @desc Get public profile
+ * @access Public
+ */
+router.get(
+  '/:userId/public',
+  validate(userValidation.getPublicProfile),
+  userController.getPublicProfile
+);
+
+/**
+ * @route GET /v1/users/:userId/export
+ * @desc Export user data
+ * @access Private
+ */
+router.get(
+  '/:userId/export',
+  auth(),
+  validate(userValidation.exportUserData),
+  userController.exportUserData
+);
+
+/**
+ * @route DELETE /v1/users/:userId/account
+ * @desc Delete user account
+ * @access Private
+ */
+router.delete(
+  '/:userId/account',
+  auth(),
+  validate(userValidation.deleteAccount),
+  userController.deleteAccount
+);
+
+// Admin-only routes
+/**
+ * @route GET /v1/users/expiring-passwords
+ * @desc Get users with expiring passwords (Admin only)
+ * @access Private (Admin only)
+ */
+router.get(
+  '/expiring-passwords',
+  auth(Role.ADMIN),
+  validate(userValidation.getUsersWithExpiringPasswords),
+  userController.getUsersWithExpiringPasswords
+);
+
+/**
+ * @route GET /v1/users/locked
+ * @desc Get locked users (Admin only)
+ * @access Private (Admin only)
+ */
+router.get(
+  '/locked',
+  auth(Role.ADMIN),
+  userController.getLockedUsers
+);
+
+/**
+ * @route PATCH /v1/users/:userId/unlock
+ * @desc Unlock user account (Admin only)
+ * @access Private (Admin only)
+ */
+router.patch(
+  '/:userId/unlock',
+  auth(Role.ADMIN),
+  validate(userValidation.unlockUserAccount),
+  userController.unlockUserAccount
+);
+
+/**
+ * @route PATCH /v1/users/:userId/force-password-change
+ * @desc Force password change (Admin only)
+ * @access Private (Admin only)
+ */
+router.patch(
+  '/:userId/force-password-change',
+  auth(Role.ADMIN),
+  validate(userValidation.forcePasswordChange),
+  userController.forcePasswordChange
+);
 
 export default router;
 

@@ -11,38 +11,186 @@ import {
 
 const router = express.Router();
 
+/**
+ * @route POST /v1/auth/register
+ * @desc Register user
+ * @access Public
+ */
 router.post(
   '/register',
-  registrationLimiter,
   validate(authValidation.register),
   authController.register
 );
-router.post('/login', authLimiter, validate(authValidation.login), authController.login);
+
+/**
+ * @route POST /v1/auth/login
+ * @desc Login user
+ * @access Public
+ */
+router.post(
+  '/login',
+  validate(authValidation.login),
+  authController.login
+);
+
+/**
+ * @route POST /v1/auth/verify-2fa
+ * @desc Verify 2FA and complete login
+ * @access Public
+ */
 router.post(
   '/verify-2fa',
   validate(authValidation.verifyTwoFactor),
   authController.verifyTwoFactor
 );
-router.post('/logout', validate(authValidation.logout), authController.logout);
+
+/**
+ * @route POST /v1/auth/logout
+ * @desc Logout user
+ * @access Private
+ */
+router.post(
+  '/logout',
+  auth(),
+  validate(authValidation.logout),
+  authController.logout
+);
+
+/**
+ * @route POST /v1/auth/refresh-tokens
+ * @desc Refresh auth tokens
+ * @access Public
+ */
 router.post(
   '/refresh-tokens',
   validate(authValidation.refreshTokens),
   authController.refreshTokens
 );
+
+/**
+ * @route POST /v1/auth/forgot-password
+ * @desc Forgot password
+ * @access Public
+ */
 router.post(
   '/forgot-password',
-  passwordResetLimiter,
   validate(authValidation.forgotPassword),
   authController.forgotPassword
 );
+
+/**
+ * @route POST /v1/auth/reset-password
+ * @desc Reset password
+ * @access Public
+ */
 router.post(
   '/reset-password',
-  passwordResetLimiter,
   validate(authValidation.resetPassword),
   authController.resetPassword
 );
-router.post('/send-verification-email', auth(), authController.sendVerificationEmail);
-router.post('/verify-email', validate(authValidation.verifyEmail), authController.verifyEmail);
+
+/**
+ * @route POST /v1/auth/send-verification-email
+ * @desc Send verification email
+ * @access Private
+ */
+router.post(
+  '/send-verification-email',
+  auth(),
+  authController.sendVerificationEmail
+);
+
+/**
+ * @route POST /v1/auth/verify-email
+ * @desc Verify email
+ * @access Public
+ */
+router.post(
+  '/verify-email',
+  validate(authValidation.verifyEmail),
+  authController.verifyEmail
+);
+
+/**
+ * @route POST /v1/auth/change-password
+ * @desc Change password
+ * @access Private
+ */
+router.post(
+  '/change-password',
+  auth(),
+  validate(authValidation.changePassword),
+  authController.changePassword
+);
+
+/**
+ * @route POST /v1/auth/2fa/setup
+ * @desc Setup 2FA
+ * @access Private
+ */
+router.post(
+  '/2fa/setup',
+  auth(),
+  authController.setupTwoFactor
+);
+
+/**
+ * @route POST /v1/auth/2fa/enable
+ * @desc Enable 2FA
+ * @access Private
+ */
+router.post(
+  '/2fa/enable',
+  auth(),
+  validate(authValidation.enableTwoFactor),
+  authController.enableTwoFactor
+);
+
+/**
+ * @route POST /v1/auth/2fa/disable
+ * @desc Disable 2FA
+ * @access Private
+ */
+router.post(
+  '/2fa/disable',
+  auth(),
+  validate(authValidation.disableTwoFactor),
+  authController.disableTwoFactor
+);
+
+/**
+ * @route GET /v1/auth/2fa/status
+ * @desc Get 2FA status
+ * @access Private
+ */
+router.get(
+  '/2fa/status',
+  auth(),
+  authController.getTwoFactorStatus
+);
+
+/**
+ * @route POST /v1/auth/2fa/regenerate-backup-codes
+ * @desc Regenerate 2FA backup codes
+ * @access Private
+ */
+router.post(
+  '/2fa/regenerate-backup-codes',
+  auth(),
+  validate(authValidation.regenerateBackupCodes),
+  authController.regenerateBackupCodes
+);
+
+/**
+ * @route GET /v1/auth/account-lockout-status
+ * @desc Check account lockout status
+ * @access Public
+ */
+router.get(
+  '/account-lockout-status',
+  validate(authValidation.checkAccountLockout),
+  authController.checkAccountLockoutStatus
+);
 
 export default router;
 

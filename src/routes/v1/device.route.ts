@@ -3,27 +3,74 @@ import auth from '../../middlewares/auth';
 import validate from '../../middlewares/validate';
 import { deviceValidation } from '../../validations';
 import { deviceController } from '../../controllers';
-import { sensitiveOperationLimiter } from '../../middlewares/rateLimiter';
 
 const router = express.Router();
 
 // All device routes require authentication
 router.use(auth());
 
-// Get user's active devices
-router.get('/', deviceController.getUserDevices);
+/**
+ * @route GET /v1/devices
+ * @desc Get user devices
+ * @access Private
+ */
+router.get(
+  '/',
+  deviceController.getUserDevices
+);
 
-// Get device limit information
-router.get('/limit-info', deviceController.getDeviceLimitInfo);
+/**
+ * @route GET /v1/devices/sessions
+ * @desc Get device sessions
+ * @access Private
+ */
+router.get(
+  '/sessions',
+  deviceController.getDeviceSessions
+);
 
-// Logout from a specific device
-router.delete('/:deviceId', sensitiveOperationLimiter, deviceController.logoutDevice);
+/**
+ * @route POST /v1/devices/:deviceId/trust
+ * @desc Trust device
+ * @access Private
+ */
+router.post(
+  '/:deviceId/trust',
+  validate(deviceValidation.trustDevice),
+  deviceController.trustDevice
+);
 
-// Logout from all other devices
-router.delete('/', sensitiveOperationLimiter, deviceController.logoutAllOtherDevices);
+/**
+ * @route DELETE /v1/devices/:deviceId
+ * @desc Remove device
+ * @access Private
+ */
+router.delete(
+  '/:deviceId',
+  validate(deviceValidation.removeDevice),
+  deviceController.removeDevice
+);
 
-// Update device name
-router.patch('/:deviceId/name', sensitiveOperationLimiter, validate(deviceValidation.updateDeviceName), deviceController.updateDeviceName);
+/**
+ * @route DELETE /v1/devices
+ * @desc Remove all other devices
+ * @access Private
+ */
+router.delete(
+  '/',
+  validate(deviceValidation.removeAllOtherDevices),
+  deviceController.removeAllOtherDevices
+);
+
+/**
+ * @route GET /v1/devices/limit
+ * @desc Check device limit
+ * @access Private
+ */
+router.get(
+  '/limit',
+  deviceController.checkDeviceLimit
+);
 
 export default router;
 

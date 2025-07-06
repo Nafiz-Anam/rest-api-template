@@ -4,6 +4,7 @@ import userRoute from './user.route';
 import docsRoute from './docs.route';
 import twoFactorRoute from './twoFactor.route';
 import deviceRoute from './device.route';
+import profileRoute from './profile.route';
 import config from '../../config/config';
 
 const router = express.Router();
@@ -28,12 +29,16 @@ const defaultRoutes = [
     route: userRoute,
   },
   {
-    path: '/two-factor',
+    path: '/2fa',
     route: twoFactorRoute,
   },
   {
     path: '/devices',
     route: deviceRoute,
+  },
+  {
+    path: '/profile',
+    route: profileRoute,
   },
 ];
 

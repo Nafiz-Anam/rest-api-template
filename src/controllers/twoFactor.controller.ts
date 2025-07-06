@@ -1,112 +1,85 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync';
-import { authService, twoFactorService, tokenService } from '../services';
-import { Request } from 'express';
+import { twoFactorService } from '../services';
+import ApiError from '../utils/ApiError';
+import { Request, Response } from 'express';
 
 /**
- * Setup 2FA (generate secret and QR code)
+ * Setup 2FA
+ * @route POST /v1/2fa/setup
+ * @access Private
  */
-const setupTwoFactor = catchAsync(async (req: Request, res) => {
-  const userId = (req.user as any).id;
-  const result = await twoFactorService.setupTwoFactor(userId);
-  
-  res.status(httpStatus.OK).json({
-    code: httpStatus.OK,
-    message: '2FA setup initiated successfully',
-    data: {
-      secret: result.secret,
-      qrCode: result.qrCode,
-      backupCodes: result.backupCodes,
-    },
-  });
+const setupTwoFactor = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const result = await twoFactorService.setupTwoFactor(user.id);
+  res.status(httpStatus.OK).send(result);
 });
 
 /**
  * Enable 2FA
+ * @route POST /v1/2fa/enable
+ * @access Private
  */
-const enableTwoFactor = catchAsync(async (req: Request, res) => {
-  const userId = (req.user as any).id;
-  const { token } = req.body;
-  
-  await twoFactorService.enableTwoFactor(userId, token);
-  
-  res.status(httpStatus.OK).json({
-    code: httpStatus.OK,
-    message: '2FA enabled successfully',
-  });
+const enableTwoFactor = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  await twoFactorService.enableTwoFactor(user.id, req.body.token);
+  res.status(httpStatus.NO_CONTENT).send();
 });
 
 /**
  * Disable 2FA
+ * @route POST /v1/2fa/disable
+ * @access Private
  */
-const disableTwoFactor = catchAsync(async (req: Request, res) => {
-  const userId = (req.user as any).id;
-  const { token } = req.body;
-  
-  await twoFactorService.disableTwoFactor(userId, token);
-  
-  res.status(httpStatus.OK).json({
-    code: httpStatus.OK,
-    message: '2FA disabled successfully',
-  });
-});
-
-/**
- * Verify 2FA during login
- */
-const verifyTwoFactor = catchAsync(async (req: Request, res) => {
-  const { userId, token } = req.body;
-  
-  const user = await authService.completeLoginWithTwoFactor(userId, token, req);
-  const tokens = await tokenService.generateAuthTokens(user, req);
-  
-  res.status(httpStatus.OK).json({
-    code: httpStatus.OK,
-    message: 'Login successful',
-    data: {
-      user,
-      tokens,
-    },
-  });
-});
-
-/**
- * Regenerate backup codes
- */
-const regenerateBackupCodes = catchAsync(async (req: Request, res) => {
-  const userId = (req.user as any).id;
-  const { token } = req.body;
-  
-  const backupCodes = await twoFactorService.regenerateBackupCodes(userId, token);
-  
-  res.status(httpStatus.OK).json({
-    code: httpStatus.OK,
-    message: 'Backup codes regenerated successfully',
-    data: {
-      backupCodes,
-    },
-  });
+const disableTwoFactor = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  await twoFactorService.disableTwoFactor(user.id, req.body.token);
+  res.status(httpStatus.NO_CONTENT).send();
 });
 
 /**
  * Get 2FA status
+ * @route GET /v1/2fa/status
+ * @access Private
  */
-const getTwoFactorStatus = catchAsync(async (req: Request, res) => {
-  const userId = (req.user as any).id;
-  const status = await twoFactorService.getTwoFactorStatus(userId);
+const getTwoFactorStatus = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const status = await twoFactorService.getTwoFactorStatus(user.id);
+  res.status(httpStatus.OK).send(status);
+});
+
+/**
+ * Regenerate backup codes
+ * @route POST /v1/2fa/regenerate-backup-codes
+ * @access Private
+ */
+const regenerateBackupCodes = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user!;
+  const backupCodes = await twoFactorService.regenerateBackupCodes(user.id, req.body.token);
+  res.status(httpStatus.OK).send({ backupCodes });
+});
+
+/**
+ * Verify 2FA token
+ * @route POST /v1/2fa/verify
+ * @access Public
+ */
+const verifyToken = catchAsync(async (req: Request, res: Response) => {
+  const { userId, token } = req.body;
   
-  res.status(httpStatus.OK).json({
-    code: httpStatus.OK,
-    message: '2FA status retrieved successfully',
-    data: status,
-  });
+  if (!userId || !token) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'User ID and token are required');
+  }
+
+  const isValid = await twoFactorService.verifyTwoFactor(userId, token);
+  res.send({ isValid });
 });
 
 export default {
   setupTwoFactor,
   enableTwoFactor,
   disableTwoFactor,
-  verifyTwoFactor,
-  regenerateBackupCodes,
   getTwoFactorStatus,
+  regenerateBackupCodes,
+  verifyToken,
 }; 

@@ -1,104 +1,199 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync';
-import { authService, userService, tokenService, emailService } from '../services';
-import securityService from '../services/security.service';
-import exclude from '../utils/exclude';
-import { User } from '@prisma/client';
+import ApiError from '../utils/ApiError';
+import authService from '../services/auth.service';
+import tokenService from '../services/token.service';
+import emailService from '../services/email.service';
+import userService from '../services/user.service';
+import { Request, Response } from 'express';
 
-const register = catchAsync(async (req, res) => {
-  const { email, password, name } = req.body;
-  const user = await userService.createUser(email, password, name);
-  const userWithoutPassword = exclude(user, ['password', 'createdAt', 'updatedAt']);
-  const tokens = await tokenService.generateAuthTokens(user, req);
-
-  // Log registration event
-  await securityService.logRegistration(user, req);
-
-  res.status(httpStatus.CREATED).send({
-    user: userWithoutPassword,
-    tokens,
-    message: 'User registered successfully',
-  });
+/**
+ * Register user
+ * @route POST /v1/auth/register
+ * @access Public
+ */
+const register = catchAsync(async (req: Request, res: Response) => {
+  const user = await userService.createUser(req.body);
+  const tokens = await tokenService.generateAuthTokens(user as any, req);
+  const verifyEmailToken = await tokenService.generateVerifyEmailToken(user as any);
+  await emailService.sendVerificationEmail(user.email, verifyEmailToken, user.name || 'User');
+  res.status(httpStatus.CREATED).send({ user, tokens });
 });
 
-const login = catchAsync(async (req, res) => {
+/**
+ * Login user
+ * @route POST /v1/auth/login
+ * @access Public
+ */
+const login = catchAsync(async (req: Request, res: Response) => {
   const { email, password } = req.body;
-  const result = await authService.loginUserWithEmailAndPassword(email, password, req);
-  
-  // Check if 2FA is required
-  if ('requiresTwoFactor' in result) {
-    res.status(httpStatus.OK).send({
-      requiresTwoFactor: true,
-      userId: result.userId,
-      message: '2FA token required',
-    });
-    return;
-  }
-  
-  const tokens = await tokenService.generateAuthTokens(result, req);
-
-  res.send({
-    user: result,
-    tokens,
-    message: 'Login successful',
-  });
+  const tokens = await authService.loginUserWithEmailAndPassword(email, password, req);
+  res.send({ tokens });
 });
 
-const verifyTwoFactor = catchAsync(async (req, res) => {
-  const { userId, token } = req.body;
-  const user = await authService.completeLoginWithTwoFactor(userId, token, req);
-  const tokens = await tokenService.generateAuthTokens(user, req);
-
-  res.send({
-    user,
-    tokens,
-    message: 'Login successful',
-  });
-});
-
-const logout = catchAsync(async (req, res) => {
-  await authService.logout(req.body.refreshToken, req);
+/**
+ * Logout
+ * @route POST /v1/auth/logout
+ * @access Private
+ */
+const logout = catchAsync(async (req: Request, res: Response) => {
+  await authService.logout(req.body.refreshToken);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
-const refreshTokens = catchAsync(async (req, res) => {
-  const tokens = await authService.refreshAuth(req.body.refreshToken);
-  res.send({ ...tokens });
+/**
+ * Refresh tokens
+ * @route POST /v1/auth/refresh-tokens
+ * @access Public
+ */
+const refreshTokens = catchAsync(async (req: Request, res: Response) => {
+  const tokens = await authService.refreshAuth(req.body.refreshToken, req);
+  res.send({ tokens });
 });
 
-const forgotPassword = catchAsync(async (req, res) => {
+/**
+ * Forgot password
+ * @route POST /v1/auth/forgot-password
+ * @access Public
+ */
+const forgotPassword = catchAsync(async (req: Request, res: Response) => {
   const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
-  await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken);
-
-  // Log password reset request
-  await securityService.logPasswordResetRequest(req.body.email, req);
-
-  res.status(httpStatus.OK).send({
-    message: 'Password reset email sent',
-  });
+  await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken, 'User');
+  res.status(httpStatus.NO_CONTENT).send();
 });
 
-const resetPassword = catchAsync(async (req, res) => {
+/**
+ * Reset password
+ * @route POST /v1/auth/reset-password
+ * @access Public
+ */
+const resetPassword = catchAsync(async (req: Request, res: Response) => {
   await authService.resetPassword(req.query.token as string, req.body.password, req);
-  res.status(httpStatus.OK).send({
-    message: 'Password reset successful',
-  });
+  res.status(httpStatus.NO_CONTENT).send();
 });
 
-const sendVerificationEmail = catchAsync(async (req, res) => {
-  const user = req.user as User;
-  const verifyEmailToken = await tokenService.generateVerifyEmailToken(user);
-  await emailService.sendVerificationEmail(user.email, verifyEmailToken);
-  res.status(httpStatus.OK).send({
-    message: 'Verification email sent',
-  });
+/**
+ * Send verification email
+ * @route POST /v1/auth/send-verification-email
+ * @access Private
+ */
+const sendVerificationEmail = catchAsync(async (req: Request, res: Response) => {
+  const verifyEmailToken = await tokenService.generateVerifyEmailToken(req.user as any);
+  await emailService.sendVerificationEmail(
+    (req.user as any).email,
+    verifyEmailToken,
+    (req.user as any).name || 'User'
+  );
+  res.status(httpStatus.NO_CONTENT).send();
 });
 
-const verifyEmail = catchAsync(async (req, res) => {
+/**
+ * Verify email
+ * @route POST /v1/auth/verify-email
+ * @access Public
+ */
+const verifyEmail = catchAsync(async (req: Request, res: Response) => {
   await authService.verifyEmail(req.query.token as string);
-  res.status(httpStatus.OK).send({
-    message: 'Email verified successfully',
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+/**
+ * Change password
+ * @route POST /v1/auth/change-password
+ * @access Private
+ */
+const changePassword = catchAsync(async (req: Request, res: Response) => {
+  await authService.changePassword(
+    (req.user as any).id,
+    req.body.oldPassword,
+    req.body.newPassword,
+    req
+  );
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+/**
+ * Verify 2FA and complete login
+ * @route POST /v1/auth/verify-2fa
+ * @access Public
+ */
+const verifyTwoFactor = catchAsync(async (req: Request, res: Response) => {
+  const { userId, token } = req.body;
+
+  const isValid = await authService.verifyTwoFactorToken(userId, token);
+
+  if (!isValid) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid 2FA token');
+  }
+
+  const user = await authService.getUserById(userId);
+  const tokens = await tokenService.generateAuthTokens(user as any, req);
+
+  res.send({
+    user: tokens.user,
+    tokens: tokens.access,
+    device: tokens.device,
   });
+});
+
+/**
+ * Setup 2FA
+ * @route POST /v1/auth/2fa/setup
+ * @access Private
+ */
+const setupTwoFactor = catchAsync(async (req: Request, res: Response) => {
+  const result = await authService.setupTwoFactor((req.user as any).id);
+  res.send(result);
+});
+
+/**
+ * Enable 2FA
+ * @route POST /v1/auth/2fa/enable
+ * @access Private
+ */
+const enableTwoFactor = catchAsync(async (req: Request, res: Response) => {
+  await authService.enableTwoFactor((req.user as any).id, req.body.token, req);
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+/**
+ * Disable 2FA
+ * @route POST /v1/auth/2fa/disable
+ * @access Private
+ */
+const disableTwoFactor = catchAsync(async (req: Request, res: Response) => {
+  await authService.disableTwoFactor((req.user as any).id, req.body.token, req);
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+/**
+ * Get 2FA status
+ * @route GET /v1/auth/2fa/status
+ * @access Private
+ */
+const getTwoFactorStatus = catchAsync(async (req: Request, res: Response) => {
+  const status = await authService.getTwoFactorStatus((req.user as any).id);
+  res.send(status);
+});
+
+/**
+ * Regenerate 2FA backup codes
+ * @route POST /v1/auth/2fa/regenerate-backup-codes
+ * @access Private
+ */
+const regenerateBackupCodes = catchAsync(async (req: Request, res: Response) => {
+  const backupCodes = await authService.regenerateBackupCodes((req.user as any).id, req.body.token);
+  res.send({ backupCodes });
+});
+
+/**
+ * Check account lockout status
+ * @route GET /v1/auth/account-lockout-status
+ * @access Public
+ */
+const checkAccountLockoutStatus = catchAsync(async (req: Request, res: Response) => {
+  const status = await authService.checkAccountLockout(req.query.email as string);
+  res.send(status);
 });
 
 export default {
@@ -111,4 +206,11 @@ export default {
   resetPassword,
   sendVerificationEmail,
   verifyEmail,
+  changePassword,
+  setupTwoFactor,
+  enableTwoFactor,
+  disableTwoFactor,
+  getTwoFactorStatus,
+  regenerateBackupCodes,
+  checkAccountLockoutStatus,
 };

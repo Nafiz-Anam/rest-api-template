@@ -1,267 +1,255 @@
-import { v4 as uuidv4 } from 'uuid';
+import { Device, Token, DeviceType } from '@prisma/client';
 import { Request } from 'express';
-import prisma from '../client';
+import { v4 as uuidv4 } from 'uuid';
 import ApiError from '../utils/ApiError';
 import httpStatus from 'http-status';
+import prisma from '../client';
 
-const MAX_DEVICES_PER_USER = 3;
+export interface DeviceInfo {
+  deviceId: string;
+  deviceName: string;
+  deviceType: DeviceType;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+export interface DeviceSession {
+  deviceId: string;
+  deviceName: string;
+  deviceType: DeviceType;
+  ipAddress?: string;
+  userAgent?: string;
+  isTrusted: boolean;
+  lastUsed: Date;
+}
 
 /**
- * Generate a unique device ID
+ * Get user devices
+ * @param {string} userId - User ID
+ * @returns {Promise<Device[]>}
  */
-const generateDeviceId = (): string => {
-  return uuidv4();
+const getUserDevices = async (userId: string): Promise<Device[]> => {
+  return prisma.device.findMany({
+    where: { userId },
+    orderBy: { lastUsed: 'desc' },
+  });
 };
 
 /**
- * Get device information from request
+ * Get device by ID
+ * @param {string} deviceId - Device ID
+ * @param {string} userId - User ID
+ * @returns {Promise<Device | null>}
  */
-const getDeviceInfo = (req: Request): {
-  deviceName: string;
-  ipAddress: string;
-  userAgent: string;
-} => {
-  const deviceName = req.body.deviceName || 'Unknown Device';
-  const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
-  const userAgent = req.get('User-Agent') || 'Unknown';
+const getDeviceById = async (deviceId: string, userId: string): Promise<Device | null> => {
+  return prisma.device.findFirst({
+    where: {
+      deviceId,
+      userId,
+    },
+  });
+};
+
+/**
+ * Create or update device session
+ * @param {string} userId - User ID
+ * @param {string} refreshToken - Refresh token
+ * @param {Request} req - Express request object
+ * @returns {Promise<DeviceSession>}
+ */
+const createDeviceSession = async (
+  userId: string,
+  refreshToken: string,
+  req: Request
+): Promise<DeviceSession> => {
+  const deviceInfo = extractDeviceInfo(req);
+  
+  // Check if device already exists
+  let device = await getDeviceById(deviceInfo.deviceId, userId);
+  
+  if (device) {
+    // Update existing device
+    device = await prisma.device.update({
+      where: { id: device.id },
+      data: {
+        lastUsed: new Date(),
+        ipAddress: deviceInfo.ipAddress,
+        userAgent: deviceInfo.userAgent,
+      },
+    });
+  } else {
+    // Create new device
+    device = await prisma.device.create({
+      data: {
+        userId,
+        deviceId: deviceInfo.deviceId,
+        deviceName: deviceInfo.deviceName,
+        deviceType: deviceInfo.deviceType,
+        ipAddress: deviceInfo.ipAddress,
+        userAgent: deviceInfo.userAgent,
+        isTrusted: false,
+        lastUsed: new Date(),
+      },
+    });
+  }
+
+  // Update token with device info
+  await prisma.token.updateMany({
+    where: {
+      token: refreshToken,
+      userId,
+    },
+    data: {
+      deviceId: device.deviceId,
+      deviceName: device.deviceName,
+      ipAddress: deviceInfo.ipAddress,
+      userAgent: deviceInfo.userAgent,
+    },
+  });
 
   return {
-    deviceName,
-    ipAddress,
-    userAgent,
+    deviceId: device.deviceId,
+    deviceName: device.deviceName,
+    deviceType: device.deviceType,
+    ipAddress: device.ipAddress || undefined,
+    userAgent: device.userAgent || undefined,
+    isTrusted: device.isTrusted,
+    lastUsed: device.lastUsed,
+  };
+};
+
+/**
+ * Mark device as trusted
+ * @param {string} userId - User ID
+ * @param {string} deviceId - Device ID
+ * @returns {Promise<Device>}
+ */
+const trustDevice = async (userId: string, deviceId: string): Promise<Device> => {
+  const device = await getDeviceById(deviceId, userId);
+  
+  if (!device) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Device not found');
+  }
+
+  return prisma.device.update({
+    where: { id: device.id },
+    data: { isTrusted: true },
+  });
+};
+
+/**
+ * Remove device
+ * @param {string} userId - User ID
+ * @param {string} deviceId - Device ID
+ * @returns {Promise<void>}
+ */
+const removeDevice = async (userId: string, deviceId: string): Promise<void> => {
+  const device = await getDeviceById(deviceId, userId);
+  
+  if (!device) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'Device not found');
+  }
+
+  // Remove all tokens associated with this device
+  await prisma.token.deleteMany({
+    where: {
+      userId,
+      deviceId,
+    },
+  });
+
+  // Remove the device
+  await prisma.device.delete({
+    where: { id: device.id },
+  });
+};
+
+/**
+ * Remove all devices except the current one
+ * @param {string} userId - User ID
+ * @param {string} currentDeviceId - Current device ID to keep
+ * @returns {Promise<number>} Number of devices removed
+ */
+const removeAllOtherDevices = async (userId: string, currentDeviceId: string): Promise<number> => {
+  // Remove all tokens from other devices
+  const tokensRemoved = await prisma.token.deleteMany({
+    where: {
+      userId,
+      deviceId: {
+        not: currentDeviceId,
+      },
+    },
+  });
+
+  // Remove all other devices
+  const devicesRemoved = await prisma.device.deleteMany({
+    where: {
+      userId,
+      deviceId: {
+        not: currentDeviceId,
+      },
+    },
+  });
+
+  return devicesRemoved.count;
+};
+
+/**
+ * Get device sessions (active tokens)
+ * @param {string} userId - User ID
+ * @returns {Promise<DeviceSession[]>}
+ */
+const getDeviceSessions = async (userId: string): Promise<DeviceSession[]> => {
+  const devices = await getUserDevices(userId);
+  
+  return devices.map(device => ({
+    deviceId: device.deviceId,
+    deviceName: device.deviceName,
+    deviceType: device.deviceType,
+    ipAddress: device.ipAddress || undefined,
+    userAgent: device.userAgent || undefined,
+    isTrusted: device.isTrusted,
+    lastUsed: device.lastUsed,
+  }));
+};
+
+/**
+ * Extract device information from request
+ * @param {Request} req - Express request object
+ * @returns {DeviceInfo}
+ */
+const extractDeviceInfo = (req: Request): DeviceInfo => {
+  return {
+    deviceId: req.headers['x-device-id'] as string || uuidv4(),
+    deviceName: req.headers['x-device-name'] as string || 'Unknown Device',
+    deviceType: (req.headers['x-device-type'] as DeviceType) || DeviceType.UNKNOWN,
+    ipAddress: req.ip,
+    userAgent: req.get('User-Agent') || undefined,
   };
 };
 
 /**
  * Check if user has reached device limit
+ * @param {string} userId - User ID
+ * @param {number} limit - Maximum number of devices allowed
+ * @returns {Promise<boolean>}
  */
-const checkDeviceLimit = async (userId: number): Promise<{
-  hasReachedLimit: boolean;
-  activeDevices: any[];
-}> => {
-  const activeDevices = await prisma.token.findMany({
-    where: {
-      userId,
-      type: 'REFRESH',
-      blacklisted: false,
-      expires: {
-        gt: new Date(),
-      },
-    },
-    select: {
-      id: true,
-      deviceId: true,
-      deviceName: true,
-      ipAddress: true,
-      userAgent: true,
-      createdAt: true,
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
+const hasReachedDeviceLimit = async (userId: string, limit: number = 3): Promise<boolean> => {
+  const deviceCount = await prisma.device.count({
+    where: { userId },
   });
-
-  return {
-    hasReachedLimit: activeDevices.length >= MAX_DEVICES_PER_USER,
-    activeDevices,
-  };
-};
-
-/**
- * Remove oldest device session when limit is reached
- */
-const removeOldestDevice = async (userId: number): Promise<void> => {
-  const oldestToken = await prisma.token.findFirst({
-    where: {
-      userId,
-      type: 'REFRESH',
-      blacklisted: false,
-      expires: {
-        gt: new Date(),
-      },
-    },
-    orderBy: {
-      createdAt: 'asc',
-    },
-  });
-
-  if (oldestToken) {
-    await prisma.token.update({
-      where: { id: oldestToken.id },
-      data: { blacklisted: true },
-    });
-  }
-};
-
-/**
- * Create a new device session
- */
-const createDeviceSession = async (
-  userId: number,
-  token: string,
-  req: Request
-): Promise<{
-  deviceId: string;
-  deviceName: string;
-  ipAddress: string;
-  userAgent: string;
-}> => {
-  const deviceInfo = getDeviceInfo(req);
-  const deviceId = generateDeviceId();
-
-  // Check device limit
-  const { hasReachedLimit, activeDevices } = await checkDeviceLimit(userId);
-
-  if (hasReachedLimit) {
-    // Remove oldest device
-    await removeOldestDevice(userId);
-  }
-
-  // Create new token with device info
-  await prisma.token.create({
-    data: {
-      token,
-      type: 'REFRESH',
-      expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-      blacklisted: false,
-      deviceId,
-      deviceName: deviceInfo.deviceName,
-      ipAddress: deviceInfo.ipAddress,
-      userAgent: deviceInfo.userAgent,
-      userId,
-    },
-  });
-
-  return {
-    deviceId,
-    deviceName: deviceInfo.deviceName,
-    ipAddress: deviceInfo.ipAddress,
-    userAgent: deviceInfo.userAgent,
-  };
-};
-
-/**
- * Get user's active devices
- */
-const getUserDevices = async (userId: number): Promise<any[]> => {
-  const devices = await prisma.token.findMany({
-    where: {
-      userId,
-      type: 'REFRESH',
-      blacklisted: false,
-      expires: {
-        gt: new Date(),
-      },
-    },
-    select: {
-      id: true,
-      deviceId: true,
-      deviceName: true,
-      ipAddress: true,
-      userAgent: true,
-      createdAt: true,
-      expires: true,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-
-  return devices.map(device => ({
-    ...device,
-    isCurrentSession: false, // Will be set by the controller
-  }));
-};
-
-/**
- * Logout from a specific device
- */
-const logoutDevice = async (userId: number, deviceId: string): Promise<void> => {
-  const token = await prisma.token.findFirst({
-    where: {
-      userId,
-      deviceId,
-      type: 'REFRESH',
-      blacklisted: false,
-    },
-  });
-
-  if (!token) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Device session not found');
-  }
-
-  await prisma.token.update({
-    where: { id: token.id },
-    data: { blacklisted: true },
-  });
-};
-
-/**
- * Logout from all devices except current
- */
-const logoutAllOtherDevices = async (userId: number, currentDeviceId: string): Promise<void> => {
-  await prisma.token.updateMany({
-    where: {
-      userId,
-      type: 'REFRESH',
-      blacklisted: false,
-      deviceId: {
-        not: currentDeviceId,
-      },
-    },
-    data: { blacklisted: true },
-  });
-};
-
-/**
- * Get device limit info
- */
-const getDeviceLimitInfo = async (userId: number): Promise<{
-  maxDevices: number;
-  currentDevices: number;
-  canAddNewDevice: boolean;
-}> => {
-  const { activeDevices } = await checkDeviceLimit(userId);
-
-  return {
-    maxDevices: MAX_DEVICES_PER_USER,
-    currentDevices: activeDevices.length,
-    canAddNewDevice: activeDevices.length < MAX_DEVICES_PER_USER,
-  };
-};
-
-/**
- * Update device name
- */
-const updateDeviceName = async (userId: number, deviceId: string, deviceName: string): Promise<void> => {
-  const token = await prisma.token.findFirst({
-    where: {
-      userId,
-      deviceId,
-      type: 'REFRESH',
-      blacklisted: false,
-    },
-  });
-
-  if (!token) {
-    throw new ApiError(httpStatus.NOT_FOUND, 'Device session not found');
-  }
-
-  await prisma.token.update({
-    where: { id: token.id },
-    data: { deviceName },
-  });
+  
+  return deviceCount >= limit;
 };
 
 export default {
-  generateDeviceId,
-  getDeviceInfo,
-  checkDeviceLimit,
-  removeOldestDevice,
-  createDeviceSession,
   getUserDevices,
-  logoutDevice,
-  logoutAllOtherDevices,
-  getDeviceLimitInfo,
-  updateDeviceName,
+  getDeviceById,
+  createDeviceSession,
+  trustDevice,
+  removeDevice,
+  removeAllOtherDevices,
+  getDeviceSessions,
+  extractDeviceInfo,
+  hasReachedDeviceLimit,
 }; 

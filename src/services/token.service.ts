@@ -4,6 +4,7 @@ import httpStatus from 'http-status';
 import config from '../config/config';
 import userService from './user.service';
 import deviceService from './device.service';
+import notificationService from './notification.service';
 import ApiError from '../utils/ApiError';
 import { Token, TokenType } from '@prisma/client';
 import prisma from '../client';
@@ -12,14 +13,14 @@ import { Request } from 'express';
 
 /**
  * Generate token
- * @param {number} userId
+ * @param {string} userId
  * @param {Moment} expires
  * @param {string} type
  * @param {string} [secret]
  * @returns {string}
  */
 const generateToken = (
-  userId: number,
+  userId: string,
   expires: Moment,
   type: TokenType,
   secret = config.jwt.secret
@@ -36,7 +37,7 @@ const generateToken = (
 /**
  * Save a token
  * @param {string} token
- * @param {number} userId
+ * @param {string} userId
  * @param {Moment} expires
  * @param {string} type
  * @param {boolean} [blacklisted]
@@ -44,12 +45,12 @@ const generateToken = (
  */
 const saveToken = async (
   token: string,
-  userId: number,
+  userId: string,
   expires: Moment,
   type: TokenType,
   blacklisted = false
 ): Promise<Token> => {
-  const createdToken = prisma.token.create({
+  const tokenDoc = await prisma.token.create({
     data: {
       token,
       userId: userId,
@@ -58,7 +59,7 @@ const saveToken = async (
       blacklisted,
     },
   });
-  return createdToken;
+  return tokenDoc;
 };
 
 /**
@@ -68,15 +69,14 @@ const saveToken = async (
  * @returns {Promise<Token>}
  */
 const verifyToken = async (token: string, type: TokenType): Promise<Token> => {
-  const payload = jwt.verify(token, config.jwt.secret);
-  const userId = Number(payload.sub);
-  const tokenData = await prisma.token.findFirst({
-    where: { token, type, userId, blacklisted: false },
+  const payload = jwt.verify(token, config.jwt.secret) as any;
+  const tokenDoc = await prisma.token.findFirst({
+    where: { token, type, userId: payload.sub as string, blacklisted: false },
   });
-  if (!tokenData) {
+  if (!tokenDoc) {
     throw new Error('Token not found');
   }
-  return tokenData;
+  return tokenDoc;
 };
 
 /**
@@ -85,7 +85,7 @@ const verifyToken = async (token: string, type: TokenType): Promise<Token> => {
  * @param {Request} req - Express request object for device info
  * @returns {Promise<AuthTokensResponse>}
  */
-const generateAuthTokens = async (user: { id: number }, req: Request): Promise<AuthTokensResponse> => {
+const generateAuthTokens = async (user: { id: string }, req: Request): Promise<AuthTokensResponse> => {
   const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
   const accessToken = generateToken(user.id, accessTokenExpires, TokenType.ACCESS);
 
@@ -94,6 +94,14 @@ const generateAuthTokens = async (user: { id: number }, req: Request): Promise<A
   
   // Create device session
   const deviceSession = await deviceService.createDeviceSession(user.id, refreshToken, req);
+
+  // Get full user data for notifications
+  const fullUser = await userService.getUserById(user.id);
+  
+  // Send login alert notification
+  if (fullUser) {
+    await notificationService.sendLoginAlert(fullUser, req, deviceSession);
+  }
 
   return {
     access: {
@@ -122,8 +130,8 @@ const generateResetPasswordToken = async (email: string): Promise<string> => {
     throw new ApiError(httpStatus.NOT_FOUND, 'No users found with this email');
   }
   const expires = moment().add(config.jwt.resetPasswordExpirationMinutes, 'minutes');
-  const resetPasswordToken = generateToken(user.id as number, expires, TokenType.RESET_PASSWORD);
-  await saveToken(resetPasswordToken, user.id as number, expires, TokenType.RESET_PASSWORD);
+  const resetPasswordToken = generateToken(user.id, expires, TokenType.RESET_PASSWORD);
+  await saveToken(resetPasswordToken, user.id, expires, TokenType.RESET_PASSWORD);
   return resetPasswordToken;
 };
 
@@ -132,11 +140,61 @@ const generateResetPasswordToken = async (email: string): Promise<string> => {
  * @param {User} user
  * @returns {Promise<string>}
  */
-const generateVerifyEmailToken = async (user: { id: number }): Promise<string> => {
+const generateVerifyEmailToken = async (user: { id: string }): Promise<string> => {
   const expires = moment().add(config.jwt.verifyEmailExpirationMinutes, 'minutes');
   const verifyEmailToken = generateToken(user.id, expires, TokenType.VERIFY_EMAIL);
   await saveToken(verifyEmailToken, user.id, expires, TokenType.VERIFY_EMAIL);
   return verifyEmailToken;
+};
+
+/**
+ * Blacklist a token
+ * @param {string} tokenId
+ * @returns {Promise<void>}
+ */
+const blacklistToken = async (tokenId: string): Promise<void> => {
+  await prisma.token.update({
+    where: { id: tokenId },
+    data: { blacklisted: true },
+  });
+};
+
+/**
+ * Remove expired tokens
+ * @returns {Promise<void>}
+ */
+const removeExpiredTokens = async (): Promise<void> => {
+  await prisma.token.deleteMany({
+    where: {
+      expires: {
+        lt: new Date(),
+      },
+    },
+  });
+};
+
+/**
+ * Get user tokens
+ * @param {string} userId
+ * @returns {Promise<Token[]>}
+ */
+const getUserTokens = async (userId: string) => {
+  return prisma.token.findMany({
+    where: { userId },
+    orderBy: { createdAt: 'desc' },
+  });
+};
+
+/**
+ * Revoke all user tokens
+ * @param {string} userId
+ * @returns {Promise<void>}
+ */
+const revokeAllUserTokens = async (userId: string): Promise<void> => {
+  await prisma.token.updateMany({
+    where: { userId },
+    data: { blacklisted: true },
+  });
 };
 
 export default {
@@ -146,4 +204,8 @@ export default {
   generateAuthTokens,
   generateResetPasswordToken,
   generateVerifyEmailToken,
+  blacklistToken,
+  removeExpiredTokens,
+  getUserTokens,
+  revokeAllUserTokens,
 };

@@ -1,11 +1,25 @@
 import Joi from 'joi';
 
-export const updateDeviceName = {
+const trustDevice = {
+  params: Joi.object().keys({
+    deviceId: Joi.string().required(),
+  }),
+};
+
+const removeDevice = {
+  params: Joi.object().keys({
+    deviceId: Joi.string().required(),
+  }),
+};
+
+const removeAllOtherDevices = {
   body: Joi.object().keys({
-    deviceName: Joi.string().min(1).max(100).required(),
+    currentDeviceId: Joi.string().required(),
   }),
 };
 
 export default {
-  updateDeviceName,
+  trustDevice,
+  removeDevice,
+  removeAllOtherDevices,
 }; 

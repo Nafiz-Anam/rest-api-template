@@ -15,6 +15,7 @@ import {
   registrationLimiter 
 } from './middlewares/rateLimiter';
 import routes from './routes/v1';
+import { healthController } from './controllers';
 import { errorConverter, errorHandler } from './middlewares/error';
 import ApiError from './utils/ApiError';
 
@@ -47,6 +48,11 @@ app.options('*', cors());
 // jwt authentication
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
+
+// Health check routes (no rate limiting)
+app.get('/v1/health', healthController.healthCheck);
+app.get('/v1/health/db', healthController.databaseHealthCheck);
+app.get('/v1/health/detailed', healthController.detailedHealthCheck);
 
 // Global rate limiting - apply to all API endpoints
 app.use('/v1', apiLimiter);

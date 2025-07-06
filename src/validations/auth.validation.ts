@@ -5,14 +5,14 @@ const register = {
   body: Joi.object().keys({
     email: Joi.string().required().email(),
     password: Joi.string().required().custom(password),
-    name: Joi.string().optional(),
-    deviceName: Joi.string().min(1).max(100).required(),
+    name: Joi.string().min(1).max(100).required(),
+    role: Joi.string().valid('USER', 'ADMIN').optional(),
   }),
 };
 
 const login = {
   body: Joi.object().keys({
-    email: Joi.string().required(),
+    email: Joi.string().required().email(),
     password: Joi.string().required(),
     deviceName: Joi.string().min(1).max(100).required(),
   }),
@@ -53,8 +53,39 @@ const verifyEmail = {
 
 const verifyTwoFactor = {
   body: Joi.object().keys({
-    userId: Joi.number().integer().positive().required(),
+    userId: Joi.string().required(),
     token: Joi.string().min(6).max(8).required(),
+  }),
+};
+
+const changePassword = {
+  body: Joi.object().keys({
+    oldPassword: Joi.string().required(),
+    newPassword: Joi.string().required().custom(password),
+  }),
+};
+
+const enableTwoFactor = {
+  body: Joi.object().keys({
+    token: Joi.string().min(6).max(8).required(),
+  }),
+};
+
+const disableTwoFactor = {
+  body: Joi.object().keys({
+    token: Joi.string().min(6).max(8).required(),
+  }),
+};
+
+const regenerateBackupCodes = {
+  body: Joi.object().keys({
+    token: Joi.string().min(6).max(8).required(),
+  }),
+};
+
+const checkAccountLockout = {
+  query: Joi.object().keys({
+    email: Joi.string().email().required(),
   }),
 };
 
@@ -67,4 +98,9 @@ export default {
   resetPassword,
   verifyEmail,
   verifyTwoFactor,
+  changePassword,
+  enableTwoFactor,
+  disableTwoFactor,
+  regenerateBackupCodes,
+  checkAccountLockout,
 };

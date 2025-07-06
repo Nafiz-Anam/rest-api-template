@@ -1,33 +1,33 @@
 import Joi from 'joi';
 
-export const enable = {
+const enableTwoFactor = {
   body: Joi.object().keys({
-    token: Joi.string().length(6).pattern(/^[0-9]+$/).required(),
+    token: Joi.string().min(6).max(8).required(),
   }),
 };
 
-export const disable = {
+const disableTwoFactor = {
   body: Joi.object().keys({
-    token: Joi.string().length(6).pattern(/^[0-9]+$/).required(),
+    token: Joi.string().min(6).max(8).required(),
   }),
 };
 
-export const regenerateBackupCodes = {
+const regenerateBackupCodes = {
   body: Joi.object().keys({
-    token: Joi.string().length(6).pattern(/^[0-9]+$/).required(),
+    token: Joi.string().min(6).max(8).required(),
   }),
 };
 
-export const verifyTwoFactor = {
+const verifyToken = {
   body: Joi.object().keys({
-    userId: Joi.number().integer().positive().required(),
+    userId: Joi.string().required(),
     token: Joi.string().min(6).max(8).required(),
   }),
 };
 
 export default {
-  enable,
-  disable,
+  enableTwoFactor,
+  disableTwoFactor,
   regenerateBackupCodes,
-  verifyTwoFactor,
+  verifyToken,
 }; 

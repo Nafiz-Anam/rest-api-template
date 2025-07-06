@@ -7,23 +7,74 @@ import { sensitiveOperationLimiter } from '../../middlewares/rateLimiter';
 
 const router = express.Router();
 
-// All 2FA routes require authentication
-router.use(auth());
+/**
+ * @route POST /v1/2fa/setup
+ * @desc Setup 2FA for user
+ * @access Private
+ */
+router.post(
+  '/setup',
+  auth(),
+  twoFactorController.setupTwoFactor
+);
 
-// Setup 2FA (generate secret and QR code)
-router.post('/setup', twoFactorController.setupTwoFactor);
+/**
+ * @route POST /v1/2fa/enable
+ * @desc Enable 2FA for user
+ * @access Private
+ */
+router.post(
+  '/enable',
+  auth(),
+  validate(twoFactorValidation.enableTwoFactor),
+  twoFactorController.enableTwoFactor
+);
 
-// Enable 2FA
-router.post('/enable', sensitiveOperationLimiter, validate(twoFactorValidation.enable), twoFactorController.enableTwoFactor);
+/**
+ * @route POST /v1/2fa/disable
+ * @desc Disable 2FA for user
+ * @access Private
+ */
+router.post(
+  '/disable',
+  auth(),
+  validate(twoFactorValidation.disableTwoFactor),
+  twoFactorController.disableTwoFactor
+);
 
-// Disable 2FA
-router.post('/disable', sensitiveOperationLimiter, validate(twoFactorValidation.disable), twoFactorController.disableTwoFactor);
+/**
+ * @route GET /v1/2fa/status
+ * @desc Get 2FA status for user
+ * @access Private
+ */
+router.get(
+  '/status',
+  auth(),
+  twoFactorController.getTwoFactorStatus
+);
 
-// Regenerate backup codes
-router.post('/regenerate-backup-codes', sensitiveOperationLimiter, validate(twoFactorValidation.regenerateBackupCodes), twoFactorController.regenerateBackupCodes);
+/**
+ * @route POST /v1/2fa/regenerate-backup-codes
+ * @desc Regenerate backup codes for user
+ * @access Private
+ */
+router.post(
+  '/regenerate-backup-codes',
+  auth(),
+  validate(twoFactorValidation.regenerateBackupCodes),
+  twoFactorController.regenerateBackupCodes
+);
 
-// Get 2FA status
-router.get('/status', twoFactorController.getTwoFactorStatus);
+/**
+ * @route POST /v1/2fa/verify
+ * @desc Verify 2FA token
+ * @access Public
+ */
+router.post(
+  '/verify',
+  validate(twoFactorValidation.verifyToken),
+  twoFactorController.verifyToken
+);
 
 export default router;
 

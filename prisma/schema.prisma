@@ -11,7 +11,7 @@ datasource db {
 }
 
 model User {
-  id                  Int      @id @default(autoincrement())
+  id                  String   @id @default(cuid())
   email               String   @unique
   name                String?
   password            String
@@ -24,44 +24,169 @@ model User {
   twoFactorSecret     String?
   twoFactorBackupCodes String[]
   twoFactorVerified   Boolean  @default(false)
+  
+  // Profile fields
+  avatar              String?
+  bio                 String?
+  location            String?
+  website             String?
+  phone               String?
+  dateOfBirth         DateTime?
+  gender              Gender?
+  
+  // Security fields
+  forcePasswordChange Boolean  @default(false)
+  passwordChangedAt   DateTime?
+  isActive            Boolean  @default(true)
+  isLocked            Boolean  @default(false)
+  
+  // Preferences
+  emailNotifications  Json?    @default("{}")
+  privacySettings     Json?    @default("{}")
+  preferences         Json?    @default("{}")
+  
+  // Timestamps
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
-  Token               Token[]
-  SecurityLog         SecurityLog[]
+  
+  // Relations
+  tokens              Token[]
+  securityLogs        SecurityLog[]
+  userActivities      UserActivity[]
+  userSessions        UserSession[]
+  devices             Device[]
+  notifications       Notification[]
+  passwordHistory     PasswordHistory[]
+  
+  @@map("users")
 }
 
 model Token {
-  id          Int       @id @default(autoincrement())
-  token       String
+  id          String    @id @default(cuid())
+  token       String    @unique
   type        TokenType
   expires     DateTime
-  blacklisted Boolean
+  blacklisted Boolean   @default(false)
+  
   // Device management fields
   deviceId    String?   // Unique identifier for the device/session
-  deviceName  String?   // Human-readable device name (e.g., "iPhone 15", "Chrome on Windows")
+  deviceName  String?   // Human-readable device name
   ipAddress   String?   // IP address of the device
   userAgent   String?   // User agent string
+  
+  // Timestamps
   createdAt   DateTime  @default(now())
-  user        User      @relation(fields: [userId], references: [id])
-  userId      Int
+  
+  // Relations
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  
+  @@map("tokens")
 }
 
 model SecurityLog {
-  id        Int           @id @default(autoincrement())
-  userId    Int?
+  id        String           @id @default(cuid())
+  userId    String?
   email     String?
   ipAddress String
   userAgent String
   eventType SecurityEventType
   details   Json?
   success   Boolean
-  timestamp DateTime      @default(now())
-  user      User?         @relation(fields: [userId], references: [id])
+  timestamp DateTime         @default(now())
+  
+  // Relations
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("security_logs")
 }
 
+model UserActivity {
+  id          String       @id @default(cuid())
+  userId      String
+  activityType ActivityType
+  description String?
+  metadata    Json?
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime     @default(now())
+  
+  // Relations
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_activities")
+}
+
+model UserSession {
+  id          String   @id @default(cuid())
+  userId      String
+  sessionId   String   @unique
+  deviceId    String?
+  deviceName  String?
+  ipAddress   String?
+  userAgent   String?
+  isActive    Boolean  @default(true)
+  lastActivity DateTime @default(now())
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("user_sessions")
+}
+
+model Device {
+  id          String   @id @default(cuid())
+  userId      String
+  deviceId    String   @unique
+  deviceName  String
+  deviceType  DeviceType
+  ipAddress   String?
+  userAgent   String?
+  isTrusted   Boolean  @default(false)
+  lastUsed    DateTime @default(now())
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("devices")
+}
+
+model Notification {
+  id          String           @id @default(cuid())
+  userId      String
+  type        NotificationType
+  title       String
+  message     String
+  isRead      Boolean          @default(false)
+  metadata    Json?
+  createdAt   DateTime         @default(now())
+  
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("notifications")
+}
+
+model PasswordHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  password    String
+  changedAt   DateTime @default(now())
+  
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("password_history")
+}
+
+// Enums
 enum Role {
   USER
   ADMIN
+  MODERATOR
 }
 
 enum TokenType {
@@ -69,6 +194,7 @@ enum TokenType {
   REFRESH
   RESET_PASSWORD
   VERIFY_EMAIL
+  TWO_FACTOR
 }
 
 enum SecurityEventType {
@@ -78,8 +204,57 @@ enum SecurityEventType {
   REGISTER
   PASSWORD_RESET_REQUESTED
   PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGE
   EMAIL_VERIFIED
   ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  TWO_FACTOR_VERIFIED
   SUSPICIOUS_ACTIVITY
   RATE_LIMIT_EXCEEDED
+  DEVICE_ADDED
+  DEVICE_REMOVED
+  SESSION_CREATED
+  SESSION_TERMINATED
+}
+
+enum ActivityType {
+  LOGIN
+  LOGOUT
+  PASSWORD_CHANGE
+  PROFILE_UPDATE
+  EMAIL_VERIFICATION
+  TWO_FACTOR_SETUP
+  DEVICE_ADDED
+  DEVICE_REMOVED
+  SESSION_CREATED
+  SESSION_TERMINATED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+}
+
+enum NotificationType {
+  LOGIN_ALERT
+  PASSWORD_CHANGE
+  EMAIL_VERIFICATION
+  TWO_FACTOR_SETUP
+  ACCOUNT_LOCKED
+  SECURITY_ALERT
+  SYSTEM_UPDATE
+  WELCOME
+}
+
+enum DeviceType {
+  MOBILE
+  TABLET
+  DESKTOP
+  UNKNOWN
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
 }
