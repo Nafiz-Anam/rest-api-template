@@ -3,10 +3,12 @@ import moment, { Moment } from 'moment';
 import httpStatus from 'http-status';
 import config from '../config/config';
 import userService from './user.service';
+import deviceService from './device.service';
 import ApiError from '../utils/ApiError';
 import { Token, TokenType } from '@prisma/client';
 import prisma from '../client';
 import { AuthTokensResponse } from '../types/response';
+import { Request } from 'express';
 
 /**
  * Generate token
@@ -78,17 +80,20 @@ const verifyToken = async (token: string, type: TokenType): Promise<Token> => {
 };
 
 /**
- * Generate auth tokens
+ * Generate auth tokens with device management
  * @param {User} user
+ * @param {Request} req - Express request object for device info
  * @returns {Promise<AuthTokensResponse>}
  */
-const generateAuthTokens = async (user: { id: number }): Promise<AuthTokensResponse> => {
+const generateAuthTokens = async (user: { id: number }, req: Request): Promise<AuthTokensResponse> => {
   const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
   const accessToken = generateToken(user.id, accessTokenExpires, TokenType.ACCESS);
 
   const refreshTokenExpires = moment().add(config.jwt.refreshExpirationDays, 'days');
   const refreshToken = generateToken(user.id, refreshTokenExpires, TokenType.REFRESH);
-  await saveToken(refreshToken, user.id, refreshTokenExpires, TokenType.REFRESH);
+  
+  // Create device session
+  const deviceSession = await deviceService.createDeviceSession(user.id, refreshToken, req);
 
   return {
     access: {
@@ -98,6 +103,10 @@ const generateAuthTokens = async (user: { id: number }): Promise<AuthTokensRespo
     refresh: {
       token: refreshToken,
       expires: refreshTokenExpires.toDate(),
+    },
+    device: {
+      id: deviceSession.deviceId,
+      name: deviceSession.deviceName,
     },
   };
 };

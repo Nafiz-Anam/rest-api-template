@@ -3,7 +3,13 @@ export interface TokenResponse {
   expires: Date;
 }
 
+export interface DeviceInfo {
+  id: string;
+  name: string;
+}
+
 export interface AuthTokensResponse {
   access: TokenResponse;
   refresh?: TokenResponse;
+  device?: DeviceInfo;
 }

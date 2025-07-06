@@ -58,7 +58,7 @@ const verifyTwoFactor = catchAsync(async (req: Request, res) => {
   const { userId, token } = req.body;
   
   const user = await authService.completeLoginWithTwoFactor(userId, token, req);
-  const tokens = await tokenService.generateAuthTokens(user);
+  const tokens = await tokenService.generateAuthTokens(user, req);
   
   res.status(httpStatus.OK).json({
     code: httpStatus.OK,

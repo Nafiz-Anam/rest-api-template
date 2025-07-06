@@ -9,7 +9,7 @@ const register = catchAsync(async (req, res) => {
   const { email, password, name } = req.body;
   const user = await userService.createUser(email, password, name);
   const userWithoutPassword = exclude(user, ['password', 'createdAt', 'updatedAt']);
-  const tokens = await tokenService.generateAuthTokens(user);
+  const tokens = await tokenService.generateAuthTokens(user, req);
 
   // Log registration event
   await securityService.logRegistration(user, req);
@@ -35,7 +35,7 @@ const login = catchAsync(async (req, res) => {
     return;
   }
   
-  const tokens = await tokenService.generateAuthTokens(result);
+  const tokens = await tokenService.generateAuthTokens(result, req);
 
   res.send({
     user: result,
@@ -47,7 +47,7 @@ const login = catchAsync(async (req, res) => {
 const verifyTwoFactor = catchAsync(async (req, res) => {
   const { userId, token } = req.body;
   const user = await authService.completeLoginWithTwoFactor(userId, token, req);
-  const tokens = await tokenService.generateAuthTokens(user);
+  const tokens = await tokenService.generateAuthTokens(user, req);
 
   res.send({
     user,

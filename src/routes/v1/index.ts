@@ -3,6 +3,7 @@ import authRoute from './auth.route';
 import userRoute from './user.route';
 import docsRoute from './docs.route';
 import twoFactorRoute from './twoFactor.route';
+import deviceRoute from './device.route';
 import config from '../../config/config';
 
 const router = express.Router();
@@ -29,6 +30,10 @@ const defaultRoutes = [
   {
     path: '/two-factor',
     route: twoFactorRoute,
+  },
+  {
+    path: '/devices',
+    route: deviceRoute,
   },
 ];
 

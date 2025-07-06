@@ -1,4 +1,5 @@
 import httpStatus from 'http-status';
+import moment from 'moment';
 import tokenService from './token.service';
 import userService from './user.service';
 import securityService from './security.service';
@@ -10,6 +11,7 @@ import { encryptPassword, isPasswordMatch } from '../utils/encryption';
 import { AuthTokensResponse } from '../types/response';
 import exclude from '../utils/exclude';
 import { Request } from 'express';
+import config from '../config/config';
 
 /**
  * Login with username and password
@@ -177,7 +179,17 @@ const refreshAuth = async (refreshToken: string): Promise<AuthTokensResponse> =>
     const refreshTokenData = await tokenService.verifyToken(refreshToken, TokenType.REFRESH);
     const { userId } = refreshTokenData;
     await prisma.token.delete({ where: { id: refreshTokenData.id } });
-    return tokenService.generateAuthTokens({ id: userId });
+    // Note: For refresh tokens, we don't have access to the original request
+    // So we'll create a minimal response without device info
+    const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
+    const accessToken = tokenService.generateToken(userId, accessTokenExpires, TokenType.ACCESS);
+    
+    return {
+      access: {
+        token: accessToken,
+        expires: accessTokenExpires.toDate(),
+      },
+    };
   } catch (error) {
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Please authenticate');
   }

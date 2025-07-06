@@ -4,3 +4,4 @@ export { default as tokenService } from './token.service';
 export { default as emailService } from './email.service';
 export { default as securityService } from './security.service';
 export { default as twoFactorService } from './twoFactor.service';
+export { default as deviceService } from './device.service';

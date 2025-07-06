@@ -36,6 +36,11 @@ model Token {
   type        TokenType
   expires     DateTime
   blacklisted Boolean
+  // Device management fields
+  deviceId    String?   // Unique identifier for the device/session
+  deviceName  String?   // Human-readable device name (e.g., "iPhone 15", "Chrome on Windows")
+  ipAddress   String?   // IP address of the device
+  userAgent   String?   // User agent string
   createdAt   DateTime  @default(now())
   user        User      @relation(fields: [userId], references: [id])
   userId      Int
