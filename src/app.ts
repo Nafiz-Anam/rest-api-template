@@ -8,7 +8,12 @@ import config from './config/config';
 import morgan from './config/morgan';
 import xss from './middlewares/xss';
 import { jwtStrategy } from './config/passport';
-import { authLimiter } from './middlewares/rateLimiter';
+import { 
+  apiLimiter, 
+  authLimiter, 
+  passwordResetLimiter, 
+  registrationLimiter 
+} from './middlewares/rateLimiter';
 import routes from './routes/v1';
 import { errorConverter, errorHandler } from './middlewares/error';
 import ApiError from './utils/ApiError';
@@ -43,9 +48,22 @@ app.options('*', cors());
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
 
-// limit repeated failed requests to auth endpoints
+// Global rate limiting - apply to all API endpoints
+app.use('/v1', apiLimiter);
+
+// Specific rate limiting for sensitive endpoints (stricter limits)
 if (config.env === 'production') {
-  app.use('/v1/auth', authLimiter);
+  // Auth endpoints - stricter limits
+  app.use('/v1/auth/login', authLimiter);
+  app.use('/v1/auth/register', registrationLimiter);
+  app.use('/v1/auth/forgot-password', passwordResetLimiter);
+  app.use('/v1/auth/reset-password', passwordResetLimiter);
+} else {
+  // Development - apply rate limiting but with more lenient limits
+  app.use('/v1/auth/login', authLimiter);
+  app.use('/v1/auth/register', registrationLimiter);
+  app.use('/v1/auth/forgot-password', passwordResetLimiter);
+  app.use('/v1/auth/reset-password', passwordResetLimiter);
 }
 
 // v1 api routes

@@ -3,6 +3,7 @@ import auth from '../../middlewares/auth';
 import validate from '../../middlewares/validate';
 import { userValidation } from '../../validations';
 import { userController } from '../../controllers';
+import { sensitiveOperationLimiter } from '../../middlewares/rateLimiter';
 
 const router = express.Router();
 
@@ -14,8 +15,18 @@ router
 router
   .route('/:userId')
   .get(auth('getUsers'), validate(userValidation.getUser), userController.getUser)
-  .patch(auth('manageUsers'), validate(userValidation.updateUser), userController.updateUser)
-  .delete(auth('manageUsers'), validate(userValidation.deleteUser), userController.deleteUser);
+  .patch(
+    auth('manageUsers'), 
+    sensitiveOperationLimiter,
+    validate(userValidation.updateUser), 
+    userController.updateUser
+  )
+  .delete(
+    auth('manageUsers'), 
+    sensitiveOperationLimiter,
+    validate(userValidation.deleteUser), 
+    userController.deleteUser
+  );
 
 export default router;
 

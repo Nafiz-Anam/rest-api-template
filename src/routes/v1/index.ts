@@ -2,9 +2,20 @@ import express from 'express';
 import authRoute from './auth.route';
 import userRoute from './user.route';
 import docsRoute from './docs.route';
+import twoFactorRoute from './twoFactor.route';
 import config from '../../config/config';
 
 const router = express.Router();
+
+// Health check endpoint (excluded from rate limiting)
+router.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    environment: config.env,
+    uptime: process.uptime(),
+  });
+});
 
 const defaultRoutes = [
   {
@@ -14,6 +25,10 @@ const defaultRoutes = [
   {
     path: '/users',
     route: userRoute,
+  },
+  {
+    path: '/two-factor',
+    route: twoFactorRoute,
   },
 ];
 

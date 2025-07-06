@@ -48,6 +48,13 @@ const verifyEmail = {
   }),
 };
 
+const verifyTwoFactor = {
+  body: Joi.object().keys({
+    userId: Joi.number().integer().positive().required(),
+    token: Joi.string().min(6).max(8).required(),
+  }),
+};
+
 export default {
   register,
   login,
@@ -56,4 +63,5 @@ export default {
   forgotPassword,
   resetPassword,
   verifyEmail,
+  verifyTwoFactor,
 };

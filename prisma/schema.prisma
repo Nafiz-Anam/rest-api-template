@@ -11,15 +11,23 @@ datasource db {
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
-  email           String   @unique
-  name            String?
-  password        String
-  role            Role     @default(USER)
-  isEmailVerified Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  Token           Token[]
+  id                  Int      @id @default(autoincrement())
+  email               String   @unique
+  name                String?
+  password            String
+  role                Role     @default(USER)
+  isEmailVerified     Boolean  @default(false)
+  failedLoginAttempts Int      @default(0)
+  lockoutUntil        DateTime?
+  lastLoginAt         DateTime?
+  twoFactorEnabled    Boolean  @default(false)
+  twoFactorSecret     String?
+  twoFactorBackupCodes String[]
+  twoFactorVerified   Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  Token               Token[]
+  SecurityLog         SecurityLog[]
 }
 
 model Token {
@@ -33,6 +41,19 @@ model Token {
   userId      Int
 }
 
+model SecurityLog {
+  id        Int           @id @default(autoincrement())
+  userId    Int?
+  email     String?
+  ipAddress String
+  userAgent String
+  eventType SecurityEventType
+  details   Json?
+  success   Boolean
+  timestamp DateTime      @default(now())
+  user      User?         @relation(fields: [userId], references: [id])
+}
+
 enum Role {
   USER
   ADMIN
@@ -43,4 +64,17 @@ enum TokenType {
   REFRESH
   RESET_PASSWORD
   VERIFY_EMAIL
+}
+
+enum SecurityEventType {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGOUT
+  REGISTER
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  EMAIL_VERIFIED
+  ACCOUNT_LOCKED
+  SUSPICIOUS_ACTIVITY
+  RATE_LIMIT_EXCEEDED
 }

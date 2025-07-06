@@ -1,13 +1,28 @@
 import express from 'express';
 import validate from '../../middlewares/validate';
-import authValidation from '../../validations/auth.validation';
+import { authValidation } from '../../validations';
 import { authController } from '../../controllers';
 import auth from '../../middlewares/auth';
+import {
+  authLimiter,
+  passwordResetLimiter,
+  registrationLimiter,
+} from '../../middlewares/rateLimiter';
 
 const router = express.Router();
 
-router.post('/register', validate(authValidation.register), authController.register);
-router.post('/login', validate(authValidation.login), authController.login);
+router.post(
+  '/register',
+  registrationLimiter,
+  validate(authValidation.register),
+  authController.register
+);
+router.post('/login', authLimiter, validate(authValidation.login), authController.login);
+router.post(
+  '/verify-2fa',
+  validate(authValidation.verifyTwoFactor),
+  authController.verifyTwoFactor
+);
 router.post('/logout', validate(authValidation.logout), authController.logout);
 router.post(
   '/refresh-tokens',
@@ -16,11 +31,13 @@ router.post(
 );
 router.post(
   '/forgot-password',
+  passwordResetLimiter,
   validate(authValidation.forgotPassword),
   authController.forgotPassword
 );
 router.post(
   '/reset-password',
+  passwordResetLimiter,
   validate(authValidation.resetPassword),
   authController.resetPassword
 );
