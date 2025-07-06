@@ -4,32 +4,90 @@ components:
       type: object
       properties:
         id:
-          type: string
+          type: integer
+          example: 1
         email:
           type: string
           format: email
+          example: "user@example.com"
         name:
           type: string
+          example: "John Doe"
         role:
           type: string
           enum: [USER, ADMIN]
-      example:
-        id: 5ebac534954b54139806c112
-        email: fake@example.com
-        name: fake name
-        role: USER
+          example: "USER"
+        isEmailVerified:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00.000Z"
+      required:
+        - id
+        - email
+        - role
+        - isEmailVerified
+        - createdAt
+        - updatedAt
+
+    UserCreate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "password123"
+        role:
+          type: string
+          enum: [USER, ADMIN]
+          default: "USER"
+          example: "USER"
+      required:
+        - email
+        - password
+
+    UserUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        role:
+          type: string
+          enum: [USER, ADMIN]
+          example: "USER"
 
     Token:
       type: object
       properties:
         token:
           type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         expires:
           type: string
           format: date-time
-      example:
-        token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI1ZWJhYzUzNDk1NGI1NDEzOTgwNmMxMTIiLCJpYXQiOjE1ODkyOTg0ODQsImV4cCI6MTU4OTMwMDI4NH0.m1U63blB0MLej_WfB7yC2FTMnCziif9X8yzwDEfJXAg
-        expires: 2020-05-12T16:18:04.793Z
+          example: "2023-01-01T00:30:00.000Z"
+      required:
+        - token
+        - expires
 
     AuthTokens:
       type: object
@@ -38,25 +96,198 @@ components:
           $ref: '#/components/schemas/Token'
         refresh:
           $ref: '#/components/schemas/Token'
+      required:
+        - access
+        - refresh
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "password123"
+      required:
+        - email
+        - password
+
+    RegisterRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          example: "John Doe"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "password123"
+      required:
+        - email
+        - name
+        - password
+
+    RefreshTokenRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+      required:
+        - refreshToken
+
+    ForgotPasswordRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+      required:
+        - email
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "reset-token-here"
+        password:
+          type: string
+          format: password
+          minLength: 8
+          example: "newpassword123"
+      required:
+        - token
+        - password
+
+    VerifyEmailRequest:
+      type: object
+      properties:
+        token:
+          type: string
+          example: "verification-token-here"
+      required:
+        - token
+
+    HealthCheck:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2023-01-01T00:00:00.000Z"
+        uptime:
+          type: number
+          example: 3600
+        database:
+          type: string
+          example: "connected"
+        version:
+          type: string
+          example: "1.0.0"
+        environment:
+          type: string
+          example: "development"
+      required:
+        - status
+        - timestamp
+        - uptime
+        - database
 
     Error:
       type: object
       properties:
         code:
-          type: number
+          type: integer
+          example: 400
         message:
           type: string
+          example: "Bad Request"
+        stack:
+          type: string
+          description: "Only included in development environment"
+          example: "Error: Bad Request\n    at ..."
+      required:
+        - code
+        - message
+
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 10
+        totalPages:
+          type: integer
+          example: 5
+        totalResults:
+          type: integer
+          example: 50
+        hasNextPage:
+          type: boolean
+          example: true
+        hasPrevPage:
+          type: boolean
+          example: false
+
+    PaginatedResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
 
   responses:
-    DuplicateEmail:
-      description: Email already taken
+    Success:
+      description: Success
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Operation completed successfully"
+
+    Created:
+      description: Created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: "Resource created successfully"
+
+    BadRequest:
+      description: Bad Request
       content:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
           example:
             code: 400
-            message: Email already taken
+            message: "Bad Request"
+
     Unauthorized:
       description: Unauthorized
       content:
@@ -65,7 +296,8 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 401
-            message: Please authenticate
+            message: "Please authenticate"
+
     Forbidden:
       description: Forbidden
       content:
@@ -74,7 +306,8 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 403
-            message: Forbidden
+            message: "Forbidden"
+
     NotFound:
       description: Not found
       content:
@@ -83,7 +316,62 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 404
-            message: Not found
+            message: "Not found"
+
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 409
+            message: "Resource already exists"
+
+    ValidationError:
+      description: Validation Error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: integer
+                example: 400
+              message:
+                type: string
+                example: "Validation Error"
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                      example: "email"
+                    message:
+                      type: string
+                      example: "Email is required"
+
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 500
+            message: "Internal Server Error"
+
+    ServiceUnavailable:
+      description: Service Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            code: 503
+            message: "Service Unavailable"
 
   securitySchemes:
     bearerAuth:

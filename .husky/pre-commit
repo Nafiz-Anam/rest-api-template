@@ -3,6 +3,9 @@
 
 echo "🔍 Running pre-commit checks..."
 
+# Auto-generate API documentation
+pnpm docs:simple-auto
+
 # Run lint-staged (formatting, linting, type checking)
 echo "📝 Running lint-staged..."
 pnpm lint-staged
@@ -14,6 +17,10 @@ pnpm lint
 # Run build check
 echo "🏗️  Running build check..."
 pnpm build
+
+# Validate API documentation
+echo "📚 Validating API documentation..."
+pnpm docs:validate
 
 # Run tests
 echo "🧪 Running tests..."
