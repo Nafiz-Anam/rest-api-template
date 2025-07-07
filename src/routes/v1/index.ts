@@ -33,30 +33,22 @@ const defaultRoutes = [
 ];
 
 // routes available only in development mode
-// const devRoutes = [
-//   {
-//     path: '/docs',
-//     route: docsRoute,
-//   },
-// ];
+const devRoutes = [
+  {
+    path: '/docs',
+    route: docsRoute,
+  },
+];
 
 // Debug log to check route registration
 defaultRoutes.forEach(route => {
-  console.log(
-    'Registering route:',
-    route.path,
-    'Type:',
-    typeof route.route,
-    'IsRouter:',
-    route.route && typeof route.route.use === 'function'
-  );
   router.use(route.path, route.route);
 });
 
-// if (config.env === 'development') {
-//   devRoutes.forEach(route => {
-//     router.use(route.path, route.route);
-//   });
-// }
+if (config.env === 'development') {
+  devRoutes.forEach(route => {
+    router.use(route.path, route.route);
+  });
+}
 
 export default router;

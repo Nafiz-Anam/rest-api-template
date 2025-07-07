@@ -43,16 +43,16 @@ app.use(compression());
 
 // enable cors
 app.use(cors());
-app.options('*', cors());
+// app.options('*', cors());
 
 // jwt authentication
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
 
 // Health check routes (no rate limiting)
-// app.get('/v1/health', healthController.healthCheck);
-// app.get('/v1/health/db', healthController.databaseHealthCheck);
-// app.get('/v1/health/detailed', healthController.detailedHealthCheck);
+app.get('/v1/health', healthController.healthCheck);
+app.get('/v1/health/db', healthController.databaseHealthCheck);
+app.get('/v1/health/detailed', healthController.detailedHealthCheck);
 
 // Global rate limiting - apply to all API endpoints
 app.use('/v1', apiLimiter);
@@ -66,10 +66,10 @@ if (config.env === 'production') {
   app.use('/v1/auth/reset-password', passwordResetLimiter);
 } else {
   // Development - apply rate limiting but with more lenient limits
-  // app.use('/v1/auth/login', authLimiter);
-  // app.use('/v1/auth/register', registrationLimiter);
-  // app.use('/v1/auth/forgot-password', passwordResetLimiter);
-  // app.use('/v1/auth/reset-password', passwordResetLimiter);
+  app.use('/v1/auth/login', authLimiter);
+  app.use('/v1/auth/register', registrationLimiter);
+  app.use('/v1/auth/forgot-password', passwordResetLimiter);
+  app.use('/v1/auth/reset-password', passwordResetLimiter);
 }
 
 // v1 api routes

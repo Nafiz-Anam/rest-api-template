@@ -18,7 +18,7 @@ export const generateTestUser = (overrides: Partial<User> = {}): Partial<User> =
 export const createTestUser = async (overrides: Partial<User> = {}): Promise<User> => {
   const userData = generateTestUser(overrides);
   const hashedPassword = await bcrypt.hash(userData.password!, 10);
-  
+
   return prisma.user.create({
     data: {
       ...userData,
@@ -73,4 +73,4 @@ export const mockResponse = () => {
   res.json = jest.fn().mockReturnValue(res);
   res.send = jest.fn().mockReturnValue(res);
   return res;
-}; 
+};

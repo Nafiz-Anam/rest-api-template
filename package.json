@@ -31,8 +31,7 @@
     "docs:advanced-auto": "ts-node scripts/advanced-auto-docs.ts",
     "docs:simple-auto": "node scripts/simple-auto-docs.cjs",
     "docs:serve": "cross-env NODE_ENV=development nodemon --exec 'node -e \"require(\\'./src/index.ts\\')\"' --watch src",
-    "docs:watch": "nodemon --ext ts,yml --watch src/routes --watch src/validations --exec \"pnpm docs:simple-auto\"",
-    "prepare": "husky install"
+    "docs:watch": "nodemon --ext ts,yml --watch src/routes --watch src/validations --exec \"pnpm docs:simple-auto\""
   },
   "keywords": [
     "node",

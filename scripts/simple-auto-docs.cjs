@@ -1,3 +1,5 @@
+/* eslint-env node */
+/* global console, process */
 const fs = require('fs');
 const path = require('path');
 const { glob } = require('glob');
@@ -5,13 +7,14 @@ const { glob } = require('glob');
 // Simple auto-generator that reads route files and validation schemas
 async function generateSimpleOpenAPISpec() {
   const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
-  
+
   const openAPISpec = {
     openapi: '3.0.0',
     info: {
       title: `${packageJson.name} API Documentation`,
       version: packageJson.version,
-      description: packageJson.description || 'RESTful API with Node.js, TypeScript, Express, and Prisma',
+      description:
+        packageJson.description || 'RESTful API with Node.js, TypeScript, Express, and Prisma',
       contact: {
         name: 'API Support',
         email: 'support@example.com',
@@ -45,10 +48,10 @@ async function generateSimpleOpenAPISpec() {
 
   // Parse validation files
   await parseValidationFiles(openAPISpec);
-  
+
   // Parse route files
   await parseRouteFiles(openAPISpec);
-  
+
   // Add common responses
   addCommonResponses(openAPISpec);
 
@@ -58,38 +61,41 @@ async function generateSimpleOpenAPISpec() {
 async function parseValidationFiles(spec) {
   try {
     const validationFiles = await glob('src/validations/*.validation.ts');
-    
+
     for (const file of validationFiles) {
       const content = fs.readFileSync(file, 'utf-8');
-      const fileName = path.basename(file, '.validation.ts');
-      
-      // Extract Joi schemas using regex
-      const schemaMatches = content.match(/const\s+(\w+)\s*=\s*Joi\.object\(/g);
-      
-      if (schemaMatches) {
-        for (const match of schemaMatches) {
-          const schemaName = match.match(/const\s+(\w+)\s*=/)?.[1];
-          if (schemaName) {
-            // Generate basic schema from field names
-            const fields = extractFieldsFromJoi(content, schemaName);
-            if (fields.length > 0) {
-              spec.components.schemas[schemaName] = {
-                type: 'object',
-                properties: {},
-                required: [],
-              };
-              
-              fields.forEach(field => {
-                spec.components.schemas[schemaName].properties[field] = {
-                  type: 'string',
-                  example: generateExample(field),
+      const match = file.match(/src\/validations\/(\w+)\.validation\.ts/);
+      const schemaName = match ? match[1] : null;
+
+      if (schemaName) {
+        // Extract Joi schemas using regex
+        const schemaMatches = content.match(/const\s+(\w+)\s*=\s*Joi\.object\(/g);
+
+        if (schemaMatches) {
+          for (const match of schemaMatches) {
+            const name = match.match(/const\s+(\w+)\s*=/)?.[1];
+            if (name === schemaName) {
+              // Generate basic schema from field names
+              const fields = extractFieldsFromJoi(content, schemaName);
+              if (fields.length > 0) {
+                spec.components.schemas[schemaName] = {
+                  type: 'object',
+                  properties: {},
+                  required: [],
                 };
-                
-                // Check if field is required
-                if (content.includes(`${field}: Joi.string().required()`)) {
-                  spec.components.schemas[schemaName].required.push(field);
-                }
-              });
+
+                fields.forEach(field => {
+                  spec.components.schemas[schemaName].properties[field] = {
+                    type: 'string',
+                    example: generateExample(field),
+                  };
+
+                  // Check if field is required
+                  if (content.includes(`${field}: Joi.string().required()`)) {
+                    spec.components.schemas[schemaName].required.push(field);
+                  }
+                });
+              }
             }
           }
         }
@@ -100,17 +106,17 @@ async function parseValidationFiles(spec) {
   }
 }
 
-function extractFieldsFromJoi(content, schemaName) {
+function extractFieldsFromJoi(content) {
   const fields = [];
   const lines = content.split('\n');
-  
+
   for (const line of lines) {
     const fieldMatch = line.match(/(\w+):\s*Joi\./);
     if (fieldMatch) {
       fields.push(fieldMatch[1]);
     }
   }
-  
+
   return fields;
 }
 
@@ -124,30 +130,34 @@ function generateExample(fieldName) {
     token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
     refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   };
-  
+
   return examples[fieldName] || 'example';
 }
 
 async function parseRouteFiles(spec) {
   try {
     const routeFiles = await glob('src/routes/v1/*.route.ts');
-    
+
     for (const file of routeFiles) {
       const content = fs.readFileSync(file, 'utf-8');
       const fileName = path.basename(file, '.route.ts');
       const tagName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
-      
+
       // Extract route definitions
-      const routeMatches = content.match(/router\.(get|post|put|patch|delete)\(['"`]([^'"`]+)['"`]/g);
-      
+      const routeMatches = content.match(
+        /router\.(get|post|put|patch|delete)\(['"`]([^'"`]+)['"`]/g
+      );
+
       if (routeMatches) {
         for (const match of routeMatches) {
-          const methodMatch = match.match(/router\.(get|post|put|patch|delete)\(['"`]([^'"`]+)['"`]/);
+          const methodMatch = match.match(
+            /router\.(get|post|put|patch|delete)\(['"`]([^'"`]+)['"`]/
+          );
           if (methodMatch) {
             const method = methodMatch[1];
             const routePath = methodMatch[2];
             const fullPath = `/${fileName}${routePath}`;
-            
+
             // Generate endpoint documentation
             spec.paths[fullPath] = {
               [method]: {
@@ -155,7 +165,7 @@ async function parseRouteFiles(spec) {
                 description: `Auto-generated endpoint for ${fileName}`,
                 tags: [tagName],
                 responses: {
-                  '200': {
+                  200: {
                     description: 'Success',
                     content: {
                       'application/json': {
@@ -169,15 +179,15 @@ async function parseRouteFiles(spec) {
                       },
                     },
                   },
-                  '400': { $ref: '#/components/responses/BadRequest' },
-                  '401': { $ref: '#/components/responses/Unauthorized' },
-                  '403': { $ref: '#/components/responses/Forbidden' },
-                  '404': { $ref: '#/components/responses/NotFound' },
-                  '500': { $ref: '#/components/responses/InternalServerError' },
+                  400: { $ref: '#/components/responses/BadRequest' },
+                  401: { $ref: '#/components/responses/Unauthorized' },
+                  403: { $ref: '#/components/responses/Forbidden' },
+                  404: { $ref: '#/components/responses/NotFound' },
+                  500: { $ref: '#/components/responses/InternalServerError' },
                 },
               },
             };
-            
+
             // Add request body for POST/PUT/PATCH
             if (['post', 'put', 'patch'].includes(method)) {
               const schemaName = `${tagName}Request`;
@@ -192,7 +202,7 @@ async function parseRouteFiles(spec) {
                 };
               }
             }
-            
+
             // Add security for protected routes
             if (fileName !== 'health') {
               spec.paths[fullPath][method].security = [{ bearerAuth: [] }];
@@ -285,24 +295,23 @@ function addCommonResponses(spec) {
 async function main() {
   try {
     console.log('🔄 Simple auto-generating API documentation...');
-    
+
     const spec = await generateSimpleOpenAPISpec();
-    
+
     // Ensure docs directory exists
     const docsDir = path.join(process.cwd(), 'docs');
     if (!fs.existsSync(docsDir)) {
       fs.mkdirSync(docsDir, { recursive: true });
     }
-    
+
     // Write the generated spec
     const outputPath = path.join(docsDir, 'simple-auto-generated-api-spec.json');
     fs.writeFileSync(outputPath, JSON.stringify(spec, null, 2));
-    
+
     console.log('✅ Simple auto-generated API documentation successfully!');
     console.log(`📄 Generated: ${outputPath}`);
     console.log(`📊 Found ${Object.keys(spec.paths || {}).length} endpoints`);
     console.log(`📋 Found ${Object.keys(spec.components?.schemas || {}).length} schemas`);
-    
   } catch (error) {
     console.error('❌ Simple auto-generation failed:', error);
     process.exit(1);
@@ -313,4 +322,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { generateSimpleOpenAPISpec }; 
+module.exports = { generateSimpleOpenAPISpec };

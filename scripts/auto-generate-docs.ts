@@ -56,10 +56,10 @@ async function generateOpenAPISpec() {
 
   // Auto-generate schemas from validation files
   await generateSchemasFromValidation(openAPISpec);
-  
+
   // Auto-generate paths from route files
   await generatePathsFromRoutes(openAPISpec);
-  
+
   // Add common responses
   addCommonResponses(openAPISpec);
 
@@ -70,11 +70,11 @@ async function generateSchemasFromValidation(spec: any) {
   try {
     // Read validation files
     const validationFiles = await glob('src/validations/*.validation.ts');
-    
+
     for (const file of validationFiles) {
       const content = fs.readFileSync(file, 'utf-8');
       const fileName = path.basename(file, '.validation.ts');
-      
+
       // Extract validation schemas (this is a simplified approach)
       // In a real implementation, you'd parse the Joi schemas more thoroughly
       if (content.includes('register')) {
@@ -88,7 +88,7 @@ async function generateSchemasFromValidation(spec: any) {
           },
         };
       }
-      
+
       if (content.includes('login')) {
         spec.components.schemas.LoginRequest = {
           type: 'object',
@@ -109,22 +109,26 @@ async function generatePathsFromRoutes(spec: any) {
   try {
     // Read route files
     const routeFiles = await glob('src/routes/v1/*.route.ts');
-    
+
     for (const file of routeFiles) {
       const content = fs.readFileSync(file, 'utf-8');
       const fileName = path.basename(file, '.route.ts');
-      
+
       // Extract route information using regex
-      const routeMatches = content.match(/router\.(get|post|put|patch|delete|put)\(['"`]([^'"`]+)['"`]/g);
-      
+      const routeMatches = content.match(
+        /router\.(get|post|put|patch|delete|put)\(['"`]([^'"`]+)['"`]/g
+      );
+
       if (routeMatches) {
         for (const match of routeMatches) {
-          const methodMatch = match.match(/router\.(get|post|put|patch|delete|put)\(['"`]([^'"`]+)['"`]/);
+          const methodMatch = match.match(
+            /router\.(get|post|put|patch|delete|put)\(['"`]([^'"`]+)['"`]/
+          );
           if (methodMatch) {
             const method = methodMatch[1];
             const routePath = methodMatch[2];
             const fullPath = `/${fileName}${routePath}`;
-            
+
             // Auto-generate path documentation
             spec.paths[fullPath] = {
               [method]: {
@@ -152,7 +156,7 @@ async function generatePathsFromRoutes(spec: any) {
                 },
               },
             };
-            
+
             // Add request body for POST/PUT/PATCH
             if (['post', 'put', 'patch'].includes(method)) {
               const schemaName = `${fileName.charAt(0).toUpperCase() + fileName.slice(1)}Request`;
@@ -227,31 +231,30 @@ function addCommonResponses(spec: any) {
 async function main() {
   try {
     console.log('🔄 Auto-generating API documentation...');
-    
+
     const spec = await generateOpenAPISpec();
-    
+
     // Ensure docs directory exists
     const docsDir = path.join(process.cwd(), 'docs');
     if (!fs.existsSync(docsDir)) {
       fs.mkdirSync(docsDir, { recursive: true });
     }
-    
+
     // Write the generated spec
     const outputPath = path.join(docsDir, 'auto-generated-api-spec.json');
     fs.writeFileSync(outputPath, JSON.stringify(spec, null, 2));
-    
+
     console.log('✅ Auto-generated API documentation successfully!');
     console.log(`📄 Generated: ${outputPath}`);
     console.log(`📊 Found ${Object.keys(spec.paths || {}).length} endpoints`);
     console.log(`📋 Found ${Object.keys(spec.components?.schemas || {}).length} schemas`);
-    
+
     // Also update the main swagger definition
     const swaggerDefPath = path.join(process.cwd(), 'src', 'docs', 'swaggerDef.ts');
     if (fs.existsSync(swaggerDefPath)) {
       console.log('📝 Updating main swagger definition...');
       // You could update the main swagger definition here if needed
     }
-    
   } catch (error) {
     console.error('❌ Auto-generation failed:', error);
     process.exit(1);
@@ -262,4 +265,4 @@ if (require.main === module) {
   main();
 }
 
-export { generateOpenAPISpec }; 
+export { generateOpenAPISpec };

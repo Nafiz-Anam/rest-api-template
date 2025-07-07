@@ -44,10 +44,10 @@ async function generateAdvancedOpenAPISpec() {
 
   // Parse Joi validation schemas
   await parseJoiSchemas(openAPISpec);
-  
+
   // Parse route files and extract endpoints
   await parseRouteFiles(openAPISpec);
-  
+
   // Add common responses
   addCommonResponses(openAPISpec);
 
@@ -57,14 +57,14 @@ async function generateAdvancedOpenAPISpec() {
 async function parseJoiSchemas(spec: any) {
   try {
     const validationFiles = await glob('src/validations/*.validation.ts');
-    
+
     for (const file of validationFiles) {
       const content = fs.readFileSync(file, 'utf-8');
       const fileName = path.basename(file, '.validation.ts');
-      
+
       // Parse Joi schemas using regex patterns
       const schemaMatches = content.match(/const\s+(\w+)\s*=\s*Joi\.object\(/g);
-      
+
       if (schemaMatches) {
         for (const match of schemaMatches) {
           const schemaName = match.match(/const\s+(\w+)\s*=/)?.[1];
@@ -73,7 +73,7 @@ async function parseJoiSchemas(spec: any) {
             const schemaStart = content.indexOf(match);
             const schemaEnd = findClosingBrace(content, schemaStart + match.length);
             const schemaDefinition = content.substring(schemaStart, schemaEnd);
-            
+
             // Convert Joi schema to OpenAPI schema
             const openAPISchema = convertJoiToOpenAPI(schemaDefinition, schemaName);
             if (openAPISchema) {
@@ -97,19 +97,19 @@ function convertJoiToOpenAPI(joiSchema: string, schemaName: string) {
 
   // Parse Joi field definitions
   const fieldMatches = joiSchema.match(/(\w+):\s*Joi\.([^(]+)\(/g);
-  
+
   if (fieldMatches) {
     for (const match of fieldMatches) {
       const fieldMatch = match.match(/(\w+):\s*Joi\.([^(]+)\(/);
       if (fieldMatch) {
         const fieldName = fieldMatch[1];
         const joiType = fieldMatch[2];
-        
+
         // Convert Joi types to OpenAPI types
         const openAPIType = convertJoiTypeToOpenAPI(joiType, joiSchema, fieldName);
         if (openAPIType) {
           schema.properties[fieldName] = openAPIType;
-          
+
           // Check if field is required
           if (joiSchema.includes(`${fieldName}: Joi.${joiType}().required()`)) {
             schema.required.push(fieldName);
@@ -134,26 +134,28 @@ function convertJoiTypeToOpenAPI(joiType: string, fullSchema: string, fieldName:
         baseType.format = 'email';
       }
       if (fullSchema.includes(`${fieldName}: Joi.string().min(`)) {
-        const minMatch = fullSchema.match(new RegExp(`${fieldName}: Joi\\.string\\(\\)\\.min\\((\\d+)\\)`));
+        const minMatch = fullSchema.match(
+          new RegExp(`${fieldName}: Joi\\.string\\(\\)\\.min\\((\\d+)\\)`)
+        );
         if (minMatch) {
           baseType.minLength = parseInt(minMatch[1]);
         }
       }
       break;
-      
+
     case 'number':
       baseType.type = 'number';
       break;
-      
+
     case 'boolean':
       baseType.type = 'boolean';
       break;
-      
+
     case 'array':
       baseType.type = 'array';
       baseType.items = { type: 'string' }; // default
       break;
-      
+
     case 'object':
       baseType.type = 'object';
       break;
@@ -161,7 +163,7 @@ function convertJoiTypeToOpenAPI(joiType: string, fullSchema: string, fieldName:
 
   // Add examples based on field name
   baseType.example = generateExample(fieldName, baseType.type);
-  
+
   return baseType;
 }
 
@@ -177,17 +179,20 @@ function generateExample(fieldName: string, type: string) {
     updatedAt: '2023-01-01T00:00:00.000Z',
   };
 
-  return examples[fieldName] || (type === 'string' ? 'example' : type === 'number' ? 1 : type === 'boolean' ? true : null);
+  return (
+    examples[fieldName] ||
+    (type === 'string' ? 'example' : type === 'number' ? 1 : type === 'boolean' ? true : null)
+  );
 }
 
 function findClosingBrace(content: string, startIndex: number): number {
   let braceCount = 0;
   let inString = false;
   let stringChar = '';
-  
+
   for (let i = startIndex; i < content.length; i++) {
     const char = content[i];
-    
+
     if (!inString && (char === '"' || char === "'" || char === '`')) {
       inString = true;
       stringChar = char;
@@ -204,32 +209,32 @@ function findClosingBrace(content: string, startIndex: number): number {
       }
     }
   }
-  
+
   return content.length;
 }
 
 async function parseRouteFiles(spec: any) {
   try {
     const routeFiles = await glob('src/routes/v1/*.route.ts');
-    
+
     for (const file of routeFiles) {
       const content = fs.readFileSync(file, 'utf-8');
       const fileName = path.basename(file, '.route.ts');
       const tagName = fileName.charAt(0).toUpperCase() + fileName.slice(1);
-      
+
       // Extract route definitions using more sophisticated regex
       const routePatterns = [
         /router\.(get|post|put|patch|delete)\(['"`]([^'"`]+)['"`]/g,
         /router\.route\(['"`]([^'"`]+)['"`]\)\.(get|post|put|patch|delete)/g,
       ];
-      
+
       for (const pattern of routePatterns) {
         let match;
         while ((match = pattern.exec(content)) !== null) {
           const method = match[1];
           const routePath = match[2] || match[1];
           const fullPath = `/${fileName}${routePath}`;
-          
+
           // Generate endpoint documentation
           const endpoint = generateEndpointDoc(method, fileName, routePath, tagName);
           spec.paths[fullPath] = {
@@ -371,24 +376,23 @@ function addCommonResponses(spec: any) {
 async function main() {
   try {
     console.log('🔄 Advanced auto-generating API documentation...');
-    
+
     const spec = await generateAdvancedOpenAPISpec();
-    
+
     // Ensure docs directory exists
     const docsDir = path.join(process.cwd(), 'docs');
     if (!fs.existsSync(docsDir)) {
       fs.mkdirSync(docsDir, { recursive: true });
     }
-    
+
     // Write the generated spec
     const outputPath = path.join(docsDir, 'advanced-auto-generated-api-spec.json');
     fs.writeFileSync(outputPath, JSON.stringify(spec, null, 2));
-    
+
     console.log('✅ Advanced auto-generated API documentation successfully!');
     console.log(`📄 Generated: ${outputPath}`);
     console.log(`📊 Found ${Object.keys(spec.paths || {}).length} endpoints`);
     console.log(`📋 Found ${Object.keys(spec.components?.schemas || {}).length} schemas`);
-    
   } catch (error) {
     console.error('❌ Advanced auto-generation failed:', error);
     process.exit(1);
@@ -399,4 +403,4 @@ if (require.main === module) {
   main();
 }
 
-export { generateAdvancedOpenAPISpec }; 
+export { generateAdvancedOpenAPISpec };
