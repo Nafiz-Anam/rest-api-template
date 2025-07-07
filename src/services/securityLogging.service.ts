@@ -1,4 +1,4 @@
-import { PrismaClient, SecurityEventType, SecurityLevel } from '@prisma/client';
+import { PrismaClient, SecurityEventType } from '@prisma/client';
 import { Request } from 'express';
 import ApiError from '../utils/ApiError';
 import httpStatus from 'http-status';
@@ -8,7 +8,6 @@ const prisma = new PrismaClient();
 export interface SecurityEventData {
   userId?: string;
   eventType: SecurityEventType;
-  level: SecurityLevel;
   description: string;
   ipAddress?: string;
   userAgent?: string;
@@ -32,16 +31,23 @@ const logSecurityEvent = async (eventData: SecurityEventData): Promise<any> => {
     data: {
       userId: eventData.userId,
       eventType: eventData.eventType,
-      level: eventData.level,
-      description: eventData.description,
-      ipAddress: eventData.ipAddress,
-      userAgent: eventData.userAgent,
-      location: eventData.location,
-      deviceId: eventData.deviceInfo?.deviceId,
-      deviceName: eventData.deviceInfo?.deviceName,
-      browser: eventData.browser,
-      os: eventData.os,
-      metadata: eventData.metadata,
+      ipAddress: eventData.ipAddress || '',
+      userAgent: eventData.userAgent || '',
+      details: {
+        description: eventData.description,
+        location: eventData.location,
+        deviceInfo: eventData.deviceInfo,
+        ...eventData.metadata,
+      },
+      success:
+        eventData.eventType === SecurityEventType.LOGIN_SUCCESS ||
+        eventData.eventType === SecurityEventType.PASSWORD_CHANGE ||
+        eventData.eventType === SecurityEventType.EMAIL_VERIFIED ||
+        eventData.eventType === SecurityEventType.TWO_FACTOR_ENABLED ||
+        eventData.eventType === SecurityEventType.TWO_FACTOR_VERIFIED ||
+        eventData.eventType === SecurityEventType.ACCOUNT_UNLOCKED ||
+        eventData.eventType === SecurityEventType.DEVICE_ADDED ||
+        eventData.eventType === SecurityEventType.SESSION_CREATED,
     },
   });
 };
@@ -63,7 +69,6 @@ const logLoginAttempt = async (
   const eventData: SecurityEventData = {
     userId,
     eventType: success ? SecurityEventType.LOGIN_SUCCESS : SecurityEventType.LOGIN_FAILED,
-    level: success ? SecurityLevel.INFO : SecurityLevel.WARNING,
     description: `${success ? 'Successful' : 'Failed'} login attempt for ${email}`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -92,7 +97,6 @@ const logPasswordChange = async (
   const eventData: SecurityEventData = {
     userId,
     eventType: SecurityEventType.PASSWORD_CHANGE,
-    level: SecurityLevel.INFO,
     description: `Password ${forced ? 'force ' : ''}changed`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -122,7 +126,6 @@ const logTwoFactorEvent = async (
   const eventData: SecurityEventData = {
     userId,
     eventType,
-    level: SecurityLevel.INFO,
     description: `Two-factor authentication event: ${eventType}`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -152,7 +155,6 @@ const logSuspiciousActivity = async (
   const eventData: SecurityEventData = {
     userId,
     eventType: SecurityEventType.SUSPICIOUS_ACTIVITY,
-    level: SecurityLevel.HIGH,
     description: `Suspicious activity detected: ${activity}`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -173,15 +175,10 @@ const logSuspiciousActivity = async (
  * @param {Request} req - Express request object
  * @returns {Promise<void>}
  */
-const logAccountLockout = async (
-  userId: string,
-  reason: string,
-  req: Request
-): Promise<void> => {
+const logAccountLockout = async (userId: string, reason: string, req: Request): Promise<void> => {
   const eventData: SecurityEventData = {
     userId,
     eventType: SecurityEventType.ACCOUNT_LOCKED,
-    level: SecurityLevel.HIGH,
     description: `Account locked: ${reason}`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -216,7 +213,6 @@ const logDeviceEvent = async (
   const eventData: SecurityEventData = {
     userId,
     eventType,
-    level: SecurityLevel.INFO,
     description: `Device event: ${eventType}`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -241,7 +237,6 @@ const getUserSecurityLogs = async (
     page?: number;
     limit?: number;
     eventType?: SecurityEventType;
-    level?: SecurityLevel;
     startDate?: Date;
     endDate?: Date;
   } = {}
@@ -249,22 +244,21 @@ const getUserSecurityLogs = async (
   logs: any[];
   total: number;
 }> => {
-  const { page = 1, limit = 20, eventType, level, startDate, endDate } = options;
+  const { page = 1, limit = 20, eventType, startDate, endDate } = options;
   const skip = (page - 1) * limit;
 
   const where: any = { userId };
   if (eventType) where.eventType = eventType;
-  if (level) where.level = level;
   if (startDate || endDate) {
-    where.createdAt = {};
-    if (startDate) where.createdAt.gte = startDate;
-    if (endDate) where.createdAt.lte = endDate;
+    where.timestamp = {};
+    if (startDate) where.timestamp.gte = startDate;
+    if (endDate) where.timestamp.lte = endDate;
   }
 
   const [logs, total] = await Promise.all([
     prisma.securityLog.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { timestamp: 'desc' },
       skip,
       take: limit,
     }),
@@ -299,44 +293,34 @@ const getSecurityStats = async (
 
   const where = {
     userId,
-    createdAt: {
+    timestamp: {
       gte: startDate,
     },
   };
 
-  const [totalEvents, byType, byLevel, recentActivity] = await Promise.all([
+  const [totalEvents, byType, recentActivity] = await Promise.all([
     prisma.securityLog.count({ where }),
     prisma.securityLog.groupBy({
       by: ['eventType'],
       where,
       _count: { eventType: true },
     }),
-    prisma.securityLog.groupBy({
-      by: ['level'],
-      where,
-      _count: { level: true },
-    }),
     prisma.securityLog.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { timestamp: 'desc' },
       take: 10,
     }),
   ]);
 
   const byTypeMap: Record<string, number> = {};
-  byType.forEach((item) => {
+  byType.forEach(item => {
     byTypeMap[item.eventType] = item._count.eventType;
-  });
-
-  const byLevelMap: Record<string, number> = {};
-  byLevel.forEach((item) => {
-    byLevelMap[item.level] = item._count.level;
   });
 
   return {
     totalEvents,
     byType: byTypeMap,
-    byLevel: byLevelMap,
+    byLevel: byTypeMap,
     recentActivity,
   };
 };
@@ -352,7 +336,7 @@ const cleanOldLogs = async (daysToKeep: number = 90): Promise<number> => {
 
   const result = await prisma.securityLog.deleteMany({
     where: {
-      createdAt: {
+      timestamp: {
         lt: cutoffDate,
       },
     },
@@ -372,4 +356,4 @@ export default {
   getUserSecurityLogs,
   getSecurityStats,
   cleanOldLogs,
-}; 
+};

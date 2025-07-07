@@ -7,11 +7,10 @@ const prisma = new PrismaClient();
 
 export interface ActivityData {
   userId: string;
-  type: ActivityType;
+  activityType: ActivityType;
   description: string;
   ipAddress?: string;
   userAgent?: string;
-  location?: string;
   metadata?: Record<string, any>;
 }
 
@@ -24,11 +23,10 @@ const logActivity = async (activityData: ActivityData): Promise<any> => {
   return prisma.userActivity.create({
     data: {
       userId: activityData.userId,
-      type: activityData.type,
+      activityType: activityData.activityType,
       description: activityData.description,
       ipAddress: activityData.ipAddress,
       userAgent: activityData.userAgent,
-      location: activityData.location,
       metadata: activityData.metadata,
     },
   });
@@ -48,7 +46,7 @@ const logLoginActivity = async (
 ): Promise<void> => {
   const activityData: ActivityData = {
     userId,
-    type: ActivityType.LOGIN,
+    activityType: ActivityType.LOGIN,
     description: 'User logged in',
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -70,7 +68,7 @@ const logLoginActivity = async (
 const logLogoutActivity = async (userId: string, req: Request): Promise<void> => {
   const activityData: ActivityData = {
     userId,
-    type: ActivityType.LOGOUT,
+    activityType: ActivityType.LOGOUT,
     description: 'User logged out',
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -96,7 +94,7 @@ const logProfileUpdateActivity = async (
 ): Promise<void> => {
   const activityData: ActivityData = {
     userId,
-    type: ActivityType.PROFILE_UPDATE,
+    activityType: ActivityType.PROFILE_UPDATE,
     description: `Profile ${field} updated`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -118,7 +116,7 @@ const logProfileUpdateActivity = async (
 const logPasswordChangeActivity = async (userId: string, req: Request): Promise<void> => {
   const activityData: ActivityData = {
     userId,
-    type: ActivityType.PASSWORD_CHANGE,
+    activityType: ActivityType.PASSWORD_CHANGE,
     description: 'Password changed',
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -146,7 +144,7 @@ const logTwoFactorActivity = async (
 ): Promise<void> => {
   const activityData: ActivityData = {
     userId,
-    type,
+    activityType: type,
     description: `Two-factor authentication: ${type}`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -180,7 +178,7 @@ const logDeviceActivity = async (
 ): Promise<void> => {
   const activityData: ActivityData = {
     userId,
-    type,
+    activityType: type,
     description: `Device management: ${type}`,
     ipAddress: req.ip || req.connection.remoteAddress,
     userAgent: req.get('User-Agent'),
@@ -216,17 +214,17 @@ const getUserActivities = async (
   const skip = (page - 1) * limit;
 
   const where: any = { userId };
-  if (type) where.type = type;
+  if (type) where.activityType = type;
   if (startDate || endDate) {
-    where.createdAt = {};
-    if (startDate) where.createdAt.gte = startDate;
-    if (endDate) where.createdAt.lte = endDate;
+    where.timestamp = {};
+    if (startDate) where.timestamp.gte = startDate;
+    if (endDate) where.timestamp.lte = endDate;
   }
 
   const [activities, total] = await Promise.all([
     prisma.userActivity.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { timestamp: 'desc' },
       skip,
       take: limit,
     }),
@@ -261,7 +259,7 @@ const getActivityStats = async (
 
   const where = {
     userId,
-    createdAt: {
+    timestamp: {
       gte: startDate,
     },
   };
@@ -269,27 +267,27 @@ const getActivityStats = async (
   const [totalActivities, byType, recentActivity] = await Promise.all([
     prisma.userActivity.count({ where }),
     prisma.userActivity.groupBy({
-      by: ['type'],
+      by: ['activityType'],
       where,
-      _count: { type: true },
+      _count: { activityType: true },
     }),
     prisma.userActivity.findMany({
       where,
-      orderBy: { createdAt: 'desc' },
+      orderBy: { timestamp: 'desc' },
       take: 10,
     }),
   ]);
 
   // Get activity trend (daily counts)
   const activityTrend = await prisma.userActivity.groupBy({
-    by: ['createdAt'],
+    by: ['timestamp'],
     where,
-    _count: { createdAt: true },
+    _count: { timestamp: true },
   });
 
   const byTypeMap: Record<string, number> = {};
-  byType.forEach((item) => {
-    byTypeMap[item.type] = item._count.type;
+  byType.forEach(item => {
+    byTypeMap[item.activityType] = item._count.activityType;
   });
 
   return {
@@ -297,8 +295,8 @@ const getActivityStats = async (
     byType: byTypeMap,
     recentActivity,
     activityTrend: activityTrend.map(item => ({
-      date: item.createdAt,
-      count: item._count.createdAt,
+      date: item.timestamp,
+      count: item._count.timestamp,
     })),
   };
 };
@@ -355,13 +353,36 @@ const cleanOldActivities = async (daysToKeep: number = 90): Promise<number> => {
 
   const result = await prisma.userActivity.deleteMany({
     where: {
-      createdAt: {
+      timestamp: {
         lt: cutoffDate,
       },
     },
   });
 
   return result.count;
+};
+
+/**
+ * Create activity with simplified interface
+ * @param {object} data - Activity data
+ * @returns {Promise<any>}
+ */
+const createActivity = async (data: {
+  userId: string;
+  activityType: ActivityType;
+  description: string;
+  metadata?: Record<string, any>;
+  ipAddress?: string;
+}): Promise<any> => {
+  return prisma.userActivity.create({
+    data: {
+      userId: data.userId,
+      activityType: data.activityType,
+      description: data.description,
+      metadata: data.metadata,
+      ipAddress: data.ipAddress,
+    },
+  });
 };
 
 export default {
@@ -376,4 +397,5 @@ export default {
   getActivityStats,
   getSessionHistory,
   cleanOldActivities,
-}; 
+  createActivity,
+};

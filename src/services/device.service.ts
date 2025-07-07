@@ -63,10 +63,10 @@ const createDeviceSession = async (
   req: Request
 ): Promise<DeviceSession> => {
   const deviceInfo = extractDeviceInfo(req);
-  
+
   // Check if device already exists
   let device = await getDeviceById(deviceInfo.deviceId, userId);
-  
+
   if (device) {
     // Update existing device
     device = await prisma.device.update({
@@ -126,7 +126,7 @@ const createDeviceSession = async (
  */
 const trustDevice = async (userId: string, deviceId: string): Promise<Device> => {
   const device = await getDeviceById(deviceId, userId);
-  
+
   if (!device) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Device not found');
   }
@@ -145,7 +145,7 @@ const trustDevice = async (userId: string, deviceId: string): Promise<Device> =>
  */
 const removeDevice = async (userId: string, deviceId: string): Promise<void> => {
   const device = await getDeviceById(deviceId, userId);
-  
+
   if (!device) {
     throw new ApiError(httpStatus.NOT_FOUND, 'Device not found');
   }
@@ -201,7 +201,7 @@ const removeAllOtherDevices = async (userId: string, currentDeviceId: string): P
  */
 const getDeviceSessions = async (userId: string): Promise<DeviceSession[]> => {
   const devices = await getUserDevices(userId);
-  
+
   return devices.map(device => ({
     deviceId: device.deviceId,
     deviceName: device.deviceName,
@@ -220,8 +220,8 @@ const getDeviceSessions = async (userId: string): Promise<DeviceSession[]> => {
  */
 const extractDeviceInfo = (req: Request): DeviceInfo => {
   return {
-    deviceId: req.headers['x-device-id'] as string || uuidv4(),
-    deviceName: req.headers['x-device-name'] as string || 'Unknown Device',
+    deviceId: (req.headers['x-device-id'] as string) || uuidv4(),
+    deviceName: (req.headers['x-device-name'] as string) || 'Unknown Device',
     deviceType: (req.headers['x-device-type'] as DeviceType) || DeviceType.UNKNOWN,
     ipAddress: req.ip,
     userAgent: req.get('User-Agent') || undefined,
@@ -238,7 +238,7 @@ const hasReachedDeviceLimit = async (userId: string, limit: number = 3): Promise
   const deviceCount = await prisma.device.count({
     where: { userId },
   });
-  
+
   return deviceCount >= limit;
 };
 
@@ -252,4 +252,4 @@ export default {
   getDeviceSessions,
   extractDeviceInfo,
   hasReachedDeviceLimit,
-}; 
+};

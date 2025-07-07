@@ -12,7 +12,7 @@ const prisma = new PrismaClient();
  * @param {NotificationType} type - Notification type
  * @param {string} title - Notification title
  * @param {string} message - Notification message
- * @param {object} data - Additional data
+ * @param {object} metadata - Additional data
  * @returns {Promise<any>}
  */
 const createNotification = async (
@@ -20,7 +20,7 @@ const createNotification = async (
   type: NotificationType,
   title: string,
   message: string,
-  data: Record<string, any> = {}
+  metadata: Record<string, any> = {}
 ): Promise<any> => {
   return prisma.notification.create({
     data: {
@@ -28,7 +28,7 @@ const createNotification = async (
       type,
       title,
       message,
-      data,
+      metadata,
       isRead: false,
     },
   });
@@ -38,8 +38,9 @@ const createNotification = async (
  * Send login alert notification
  */
 const sendLoginAlert = async (user: any, req: Request, deviceInfo: any): Promise<void> => {
-  // Check if user has login alerts enabled
-  if (!user.loginAlerts) {
+  // Check if user has login alerts enabled (stored in preferences)
+  const userPreferences = user.preferences ? JSON.parse(user.preferences as string) : {};
+  if (!userPreferences.loginAlerts) {
     return;
   }
 
@@ -47,22 +48,24 @@ const sendLoginAlert = async (user: any, req: Request, deviceInfo: any): Promise
   const message = `A new login was detected on your account from ${deviceInfo.deviceName} (${deviceInfo.ipAddress}) at ${new Date().toLocaleString()}.`;
 
   // Create notification record
-  await createNotification(user.id, NotificationType.LOGIN_ALERT, title, message);
+  await createNotification(user.id, NotificationType.LOGIN_ALERT, title, message, {
+    deviceName: deviceInfo.deviceName,
+    ipAddress: deviceInfo.ipAddress,
+    timestamp: new Date().toISOString(),
+  });
 
   // Send email notification if enabled
-  if (user.emailNotifications) {
-    await emailService.sendLoginAlertEmail(user.email, {
-      deviceName: deviceInfo.deviceName,
-      ipAddress: deviceInfo.ipAddress,
-      userAgent: deviceInfo.userAgent,
-      timestamp: new Date().toISOString(),
-    });
+  const emailPrefs = user.emailNotifications ? JSON.parse(user.emailNotifications as string) : {};
+  if (emailPrefs.loginAlerts) {
+    try {
+      await emailService.sendLoginAlertEmail(user.email, {
+        deviceName: deviceInfo.deviceName,
+        ipAddress: deviceInfo.ipAddress,
+      });
+    } catch (error) {
+      console.error('Failed to send login alert email:', error);
+    }
   }
-
-  // TODO: Send SMS notification if enabled and phone number exists
-  // if (user.smsNotifications && user.phone) {
-  //   await smsService.sendLoginAlertSMS(user.phone, message);
-  // }
 };
 
 /**
@@ -83,11 +86,16 @@ const sendSecurityUpdate = async (
   }
 
   // Create notification record
-  await createNotification(userId, NotificationType.SECURITY_UPDATE, title, message);
+  await createNotification(userId, NotificationType.SECURITY_ALERT, title, message);
 
   // Send email if enabled
-  if (user.emailNotifications) {
-    await emailService.sendSecurityUpdateEmail(user.email, { title, message });
+  const emailPrefs = user.emailNotifications ? JSON.parse(user.emailNotifications as string) : {};
+  if (emailPrefs.securityUpdates) {
+    try {
+      await emailService.sendSecurityUpdateEmail(user.email, { title, message });
+    } catch (error) {
+      console.error('Failed to send security update email:', error);
+    }
   }
 };
 
@@ -108,11 +116,16 @@ const sendPasswordExpiryAlert = async (userId: string, daysUntilExpiry: number):
   const message = `Your password will expire in ${daysUntilExpiry} days. Please change it soon to maintain account security.`;
 
   // Create notification record
-  await createNotification(userId, NotificationType.PASSWORD_EXPIRY, title, message);
+  await createNotification(userId, NotificationType.PASSWORD_CHANGE, title, message);
 
   // Send email if enabled
-  if (user.emailNotifications) {
-    await emailService.sendPasswordExpiryEmail(user.email, { daysUntilExpiry });
+  const emailPrefs = user.emailNotifications ? JSON.parse(user.emailNotifications as string) : {};
+  if (emailPrefs.passwordChanges) {
+    try {
+      await emailService.sendPasswordExpiryEmail(user.email, { daysUntilExpiry });
+    } catch (error) {
+      console.error('Failed to send password expiry email:', error);
+    }
   }
 };
 
@@ -137,11 +150,16 @@ const sendSuspiciousActivityAlert = async (
   const message = `Suspicious activity detected: ${activity} from ${location}. If this wasn't you, please secure your account immediately.`;
 
   // Create notification record
-  await createNotification(userId, NotificationType.SUSPICIOUS_ACTIVITY, title, message);
+  await createNotification(userId, NotificationType.SECURITY_ALERT, title, message);
 
   // Send email if enabled
-  if (user.emailNotifications) {
-    await emailService.sendSuspiciousActivityEmail(user.email, { activity, location });
+  const emailPrefs = user.emailNotifications ? JSON.parse(user.emailNotifications as string) : {};
+  if (emailPrefs.securityAlerts) {
+    try {
+      await emailService.sendSuspiciousActivityEmail(user.email, { activity, location });
+    } catch (error) {
+      console.error('Failed to send suspicious activity email:', error);
+    }
   }
 };
 
@@ -261,7 +279,10 @@ const deleteReadNotifications = async (userId: string): Promise<number> => {
 /**
  * Get notification count
  */
-const getNotificationCount = async (userId: string, unreadOnly: boolean = true): Promise<number> => {
+const getNotificationCount = async (
+  userId: string,
+  unreadOnly: boolean = true
+): Promise<number> => {
   const where: any = { userId };
   if (unreadOnly) {
     where.isRead = false;
@@ -312,12 +333,13 @@ const sendLoginNotification = async (
   );
 
   // Send email if enabled
-  if (user.emailNotifications?.loginAlerts) {
-    await emailService.sendLoginAlertEmail(
-      user.email,
-      user.name || 'User',
-      loginData
-    );
+  const emailNotifications = getEmailNotifications(user.emailNotifications);
+  if (emailNotifications.loginAlerts) {
+    try {
+      await emailService.sendLoginAlertEmail(user.email, loginData);
+    } catch (error) {
+      console.error('Failed to send login notification email:', error);
+    }
   }
 };
 
@@ -358,12 +380,13 @@ const sendPasswordChangeNotification = async (
   );
 
   // Send email if enabled
-  if (user.emailNotifications?.passwordChanges) {
-    await emailService.sendPasswordChangeEmail(
-      user.email,
-      user.name || 'User',
-      changeData
-    );
+  const emailNotifications = getEmailNotifications(user.emailNotifications);
+  if (emailNotifications.passwordChanges) {
+    try {
+      await emailService.sendPasswordChangeEmail(user.email, user.name || 'User', changeData);
+    } catch (error) {
+      console.error('Failed to send password change notification email:', error);
+    }
   }
 };
 
@@ -373,10 +396,7 @@ const sendPasswordChangeNotification = async (
  * @param {boolean} enabled - Whether 2FA was enabled or disabled
  * @returns {Promise<void>}
  */
-const sendTwoFactorNotification = async (
-  userId: string,
-  enabled: boolean
-): Promise<void> => {
+const sendTwoFactorNotification = async (userId: string, enabled: boolean): Promise<void> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true, name: true, emailNotifications: true },
@@ -391,24 +411,19 @@ const sendTwoFactorNotification = async (
   const message = `Two-factor authentication has been ${action} for your account`;
 
   // Create notification
-  await createNotification(
-    userId,
-    NotificationType.TWO_FACTOR,
-    title,
-    message,
-    {
-      enabled,
-      timestamp: new Date(),
-    }
-  );
+  await createNotification(userId, NotificationType.TWO_FACTOR_SETUP, title, message, {
+    enabled,
+    timestamp: new Date(),
+  });
 
   // Send email if enabled
-  if (user.emailNotifications?.twoFactorChanges) {
-    await emailService.sendTwoFactorEmail(
-      user.email,
-      user.name || 'User',
-      { enabled }
-    );
+  const emailNotifications = getEmailNotifications(user.emailNotifications);
+  if (emailNotifications.twoFactorChanges) {
+    try {
+      await emailService.sendTwoFactorEmail(user.email, user.name || 'User', { enabled });
+    } catch (error) {
+      console.error('Failed to send 2FA notification email:', error);
+    }
   }
 };
 
@@ -440,7 +455,7 @@ const sendDeviceLoginNotification = async (
   // Create notification
   await createNotification(
     userId,
-    NotificationType.DEVICE_LOGIN,
+    NotificationType.LOGIN_ALERT,
     'New Device Login',
     `New login from ${deviceData.deviceName}`,
     {
@@ -454,12 +469,13 @@ const sendDeviceLoginNotification = async (
   );
 
   // Send email if enabled
-  if (user.emailNotifications?.deviceLogins) {
-    await emailService.sendDeviceLoginEmail(
-      user.email,
-      user.name || 'User',
-      deviceData
-    );
+  const emailNotifications = getEmailNotifications(user.emailNotifications);
+  if (emailNotifications.deviceLogins) {
+    try {
+      await emailService.sendDeviceLoginEmail(user.email, user.name || 'User', deviceData);
+    } catch (error) {
+      console.error('Failed to send device login notification email:', error);
+    }
   }
 };
 
@@ -468,7 +484,9 @@ const sendDeviceLoginNotification = async (
  * @param {string} userId - User ID
  * @returns {Promise<{total: number, unread: number, byType: Record<string, number>}>}
  */
-const getNotificationStats = async (userId: string): Promise<{
+const getNotificationStats = async (
+  userId: string
+): Promise<{
   total: number;
   unread: number;
   byType: Record<string, number>;
@@ -484,7 +502,7 @@ const getNotificationStats = async (userId: string): Promise<{
   ]);
 
   const byTypeMap: Record<string, number> = {};
-  byType.forEach((item) => {
+  byType.forEach(item => {
     byTypeMap[item.type] = item._count.type;
   });
 
@@ -494,6 +512,18 @@ const getNotificationStats = async (userId: string): Promise<{
     byType: byTypeMap,
   };
 };
+
+function getEmailNotifications(notifications: any): any {
+  if (!notifications) return {};
+  if (typeof notifications === 'string') {
+    try {
+      return JSON.parse(notifications);
+    } catch {
+      return {};
+    }
+  }
+  return notifications;
+}
 
 export default {
   createNotification,
@@ -512,4 +542,4 @@ export default {
   sendTwoFactorNotification,
   sendDeviceLoginNotification,
   getNotificationStats,
-}; 
+};

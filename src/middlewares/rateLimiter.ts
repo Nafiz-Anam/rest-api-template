@@ -82,9 +82,11 @@ export const apiLimiter = rateLimit({
   },
   skip: (req: Request) => {
     // Skip rate limiting for health checks, docs, and internal requests
-    return req.path === '/health' || 
-           req.path.startsWith('/docs') || 
-           req.get('X-Internal-Request') === 'true';
+    return (
+      req.path === '/health' ||
+      req.path.startsWith('/docs') ||
+      req.get('X-Internal-Request') === 'true'
+    );
   },
 });
 

@@ -7,10 +7,10 @@ export const securityHeaders = (req: Request, res: Response, next: NextFunction)
   res.setHeader('X-XSS-Protection', '1; mode=block');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   res.setHeader('Permissions-Policy', 'geolocation=(), microphone=(), camera=()');
-  
+
   // Remove server information
   res.removeHeader('X-Powered-By');
-  
+
   next();
 };
 
@@ -26,4 +26,4 @@ export const corsConfig = {
   origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
   credentials: true,
   optionsSuccessStatus: 200,
-}; 
+};

@@ -18,7 +18,9 @@ const REQUIRE_SPECIAL_CHARS = true;
  * @param {string} password - Password to check
  * @returns {Promise<{isValid: boolean, errors: string[]}>}
  */
-const checkPasswordStrength = async (password: string): Promise<{
+const checkPasswordStrength = async (
+  password: string
+): Promise<{
   isValid: boolean;
   errors: string[];
 }> => {
@@ -57,18 +59,19 @@ const checkPasswordStrength = async (password: string): Promise<{
  * @returns {Promise<boolean>}
  */
 const isPasswordInHistory = async (userId: string, newPassword: string): Promise<boolean> => {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { passwordHistory: true },
+  const passwordHistory = await prisma.passwordHistory.findMany({
+    where: { userId },
+    orderBy: { changedAt: 'desc' },
+    take: PASSWORD_HISTORY_LIMIT,
   });
 
-  if (!user || !user.passwordHistory) {
+  if (!passwordHistory || passwordHistory.length === 0) {
     return false;
   }
 
   // Check current password and password history
-  for (const hashedPassword of user.passwordHistory) {
-    const isMatch = await bcrypt.compare(newPassword, hashedPassword);
+  for (const passwordRecord of passwordHistory) {
+    const isMatch = await bcrypt.compare(newPassword, passwordRecord.password);
     if (isMatch) {
       return true;
     }
@@ -93,13 +96,39 @@ const addPasswordToHistory = async (userId: string, hashedPassword: string): Pro
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const currentHistory = user.passwordHistory || [];
-  const newHistory = [hashedPassword, ...currentHistory].slice(0, PASSWORD_HISTORY_LIMIT);
+  // Get current password history count
+  const currentHistoryCount = await prisma.passwordHistory.count({
+    where: { userId },
+  });
 
+  // Create new password history record
+  await prisma.passwordHistory.create({
+    data: {
+      userId,
+      password: hashedPassword,
+      changedAt: new Date(),
+    },
+  });
+
+  // Remove old records if we exceed the limit
+  if (currentHistoryCount >= PASSWORD_HISTORY_LIMIT) {
+    const oldestRecords = await prisma.passwordHistory.findMany({
+      where: { userId },
+      orderBy: { changedAt: 'asc' },
+      take: currentHistoryCount - PASSWORD_HISTORY_LIMIT + 1,
+    });
+
+    await prisma.passwordHistory.deleteMany({
+      where: {
+        id: { in: oldestRecords.map(record => record.id) },
+      },
+    });
+  }
+
+  // Update user's password changed timestamp
   await prisma.user.update({
     where: { id: userId },
-    data: { 
-      passwordHistory: newHistory,
+    data: {
       passwordChangedAt: new Date(),
     },
   });
@@ -131,7 +160,9 @@ const isPasswordExpired = async (userId: string): Promise<boolean> => {
  * @param {string} userId - User ID
  * @returns {Promise<{isExpired: boolean, daysUntilExpiry: number, expiryDate: Date}>}
  */
-const getPasswordExpiryInfo = async (userId: string): Promise<{
+const getPasswordExpiryInfo = async (
+  userId: string
+): Promise<{
   isExpired: boolean;
   daysUntilExpiry: number;
   expiryDate: Date;
@@ -144,7 +175,7 @@ const getPasswordExpiryInfo = async (userId: string): Promise<{
   if (!user || !user.passwordChangedAt) {
     const defaultExpiry = new Date();
     defaultExpiry.setDate(defaultExpiry.getDate() + PASSWORD_EXPIRY_DAYS);
-    
+
     return {
       isExpired: false,
       daysUntilExpiry: PASSWORD_EXPIRY_DAYS,
@@ -171,7 +202,10 @@ const getPasswordExpiryInfo = async (userId: string): Promise<{
  * @param {string} newPassword - New password to validate
  * @returns {Promise<{isValid: boolean, errors: string[]}>}
  */
-const validateNewPassword = async (userId: string, newPassword: string): Promise<{
+const validateNewPassword = async (
+  userId: string,
+  newPassword: string
+): Promise<{
   isValid: boolean;
   errors: string[];
 }> => {
@@ -217,7 +251,7 @@ const updatePassword = async (userId: string, newPassword: string): Promise<void
   // Update user password
   await prisma.user.update({
     where: { id: userId },
-    data: { 
+    data: {
       password: hashedPassword,
       passwordChangedAt: new Date(),
     },
@@ -232,7 +266,7 @@ const updatePassword = async (userId: string, newPassword: string): Promise<void
 const forcePasswordChange = async (userId: string): Promise<void> => {
   await prisma.user.update({
     where: { id: userId },
-    data: { 
+    data: {
       forcePasswordChange: true,
     },
   });
@@ -271,7 +305,9 @@ const needsPasswordChange = async (userId: string): Promise<boolean> => {
  *   forceChange: boolean
  * }>}
  */
-const getPasswordSecurityStatus = async (userId: string): Promise<{
+const getPasswordSecurityStatus = async (
+  userId: string
+): Promise<{
   needsChange: boolean;
   isExpired: boolean;
   daysUntilExpiry: number;
@@ -310,4 +346,4 @@ export default {
   forcePasswordChange,
   needsPasswordChange,
   getPasswordSecurityStatus,
-}; 
+};

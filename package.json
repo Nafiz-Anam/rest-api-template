@@ -6,7 +6,7 @@
   "repository": "https://github.com/antonio-lazaro/prisma-express-typescript-boilerplate.git",
   "scripts": {
     "start": "yarn build && pm2 start ecosystem.config.json --no-daemon",
-    "dev": "cross-env NODE_ENV=development nodemon src/index.ts",
+    "dev": "cross-env NODE_ENV=development nodemon",
     "test": "docker-compose -f docker-compose.only-db-test.yml up -d && yarn db:push && jest -i --colors --verbose --detectOpenHandles && docker-compose -f docker-compose.only-db-test.yml down",
     "test:watch": "docker-compose -f docker-compose.only-db-test.yml up -d && yarn db:push && jest -i --watchAll && docker-compose -f docker-compose.only-db-test.yml down",
     "lint": "eslint .",
@@ -25,10 +25,10 @@
     "format": "prettier --write **/*.{ts,js,json,md}",
     "format:check": "prettier --check **/*.{ts,js,json,md}",
     "validate": "pnpm lint && pnpm type-check && pnpm build",
-    "docs:generate": "ts-node --esm scripts/generate-docs.ts",
+    "docs:generate": "ts-node scripts/generate-docs.ts",
     "docs:validate": "node scripts/validate-docs.cjs",
-    "docs:auto-generate": "ts-node --esm scripts/auto-generate-docs.ts",
-    "docs:advanced-auto": "ts-node --esm scripts/advanced-auto-docs.ts",
+    "docs:auto-generate": "ts-node scripts/auto-generate-docs.ts",
+    "docs:advanced-auto": "ts-node scripts/advanced-auto-docs.ts",
     "docs:simple-auto": "node scripts/simple-auto-docs.cjs",
     "docs:serve": "cross-env NODE_ENV=development nodemon --exec 'node -e \"require(\\'./src/index.ts\\')\"' --watch src",
     "docs:watch": "nodemon --ext ts,yml --watch src/routes --watch src/validations --exec \"pnpm docs:simple-auto\"",
@@ -125,6 +125,5 @@
     "uuid": "^11.1.0",
     "winston": "^3.17.0",
     "xss-filters": "^1.2.7"
-  },
-  "type": "module"
+  }
 }

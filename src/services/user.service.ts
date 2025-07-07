@@ -40,7 +40,7 @@ const getUserById = async (id: string, keys?: string[]) => {
     });
     return user;
   }
-  
+
   // Return full user object if no keys specified
   const user = await prisma.user.findUnique({
     where: { id },
@@ -119,13 +119,15 @@ const queryUsers = async (filter: any, options: any) => {
       createdAt: true,
       updatedAt: true,
     },
-    orderBy: options.sortBy ? { [options.sortBy]: options.sortOrder || 'desc' } : { createdAt: 'desc' },
+    orderBy: options.sortBy
+      ? { [options.sortBy]: options.sortOrder || 'desc' }
+      : { createdAt: 'desc' },
     skip: (options.page - 1) * options.limit,
     take: options.limit,
   });
-  
+
   const total = await prisma.user.count({ where: filter });
-  
+
   return {
     results: users,
     page: options.page,
@@ -160,6 +162,7 @@ const getUserProfile = async (userId: string) => {
       lastLoginAt: true,
       createdAt: true,
       updatedAt: true,
+      privacySettings: true,
     },
   });
 
@@ -168,7 +171,7 @@ const getUserProfile = async (userId: string) => {
   }
 
   const privacySettings = user.privacySettings || {};
-  
+
   return {
     ...user,
     privacySettings,
@@ -336,7 +339,9 @@ const getUsersWithExpiringPasswords = async (filter: any, options: any) => {
       passwordChangedAt: true,
       lastLoginAt: true,
     },
-    orderBy: options.sortBy ? { [options.sortBy]: options.sortOrder || 'desc' } : { passwordChangedAt: 'asc' },
+    orderBy: options.sortBy
+      ? { [options.sortBy]: options.sortOrder || 'desc' }
+      : { passwordChangedAt: 'asc' },
     skip: (options.page - 1) * options.limit,
     take: options.limit,
   });
@@ -380,7 +385,9 @@ const getLockedUsers = async (filter: any, options: any) => {
       lockoutUntil: true,
       lastLoginAt: true,
     },
-    orderBy: options.sortBy ? { [options.sortBy]: options.sortOrder || 'desc' } : { lastLoginAt: 'desc' },
+    orderBy: options.sortBy
+      ? { [options.sortBy]: options.sortOrder || 'desc' }
+      : { lastLoginAt: 'desc' },
     skip: (options.page - 1) * options.limit,
     take: options.limit,
   });

@@ -12,48 +12,28 @@ const router = express.Router();
  * @desc Create user (Admin only)
  * @access Private (Admin only)
  */
-router.post(
-  '/',
-  auth(Role.ADMIN),
-  validate(userValidation.createUser),
-  userController.createUser
-);
+router.post('/', auth(Role.ADMIN), validate(userValidation.createUser), userController.createUser);
 
 /**
  * @route GET /v1/users
  * @desc Get users (Admin only)
  * @access Private (Admin only)
  */
-router.get(
-  '/',
-  auth(Role.ADMIN),
-  validate(userValidation.getUsers),
-  userController.getUsers
-);
+router.get('/', auth(Role.ADMIN), validate(userValidation.getUsers), userController.getUsers);
 
 /**
  * @route GET /v1/users/:userId
  * @desc Get user
  * @access Private
  */
-router.get(
-  '/:userId',
-  auth(),
-  validate(userValidation.getUser),
-  userController.getUser
-);
+router.get('/:userId', auth(), validate(userValidation.getUser), userController.getUser);
 
 /**
  * @route PATCH /v1/users/:userId
  * @desc Update user
  * @access Private
  */
-router.patch(
-  '/:userId',
-  auth(),
-  validate(userValidation.updateUser),
-  userController.updateUser
-);
+router.patch('/:userId', auth(), validate(userValidation.updateUser), userController.updateUser);
 
 /**
  * @route DELETE /v1/users/:userId
@@ -276,11 +256,7 @@ router.patch(
  * @desc Mark all notifications as read
  * @access Private
  */
-router.patch(
-  '/:userId/notifications/read-all',
-  auth(),
-  userController.markAllNotificationsAsRead
-);
+router.patch('/:userId/notifications/read-all', auth(), userController.markAllNotificationsAsRead);
 
 /**
  * @route DELETE /v1/users/:userId/notifications/:notificationId
@@ -299,22 +275,14 @@ router.delete(
  * @desc Delete read notifications
  * @access Private
  */
-router.delete(
-  '/:userId/notifications/read',
-  auth(),
-  userController.deleteReadNotifications
-);
+router.delete('/:userId/notifications/read', auth(), userController.deleteReadNotifications);
 
 /**
  * @route GET /v1/users/:userId/notifications/stats
  * @desc Get notification statistics
  * @access Private
  */
-router.get(
-  '/:userId/notifications/stats',
-  auth(),
-  userController.getNotificationStats
-);
+router.get('/:userId/notifications/stats', auth(), userController.getNotificationStats);
 
 /**
  * @route GET /v1/users/:userId/security-logs
@@ -393,11 +361,7 @@ router.get(
  * @desc Get locked users (Admin only)
  * @access Private (Admin only)
  */
-router.get(
-  '/locked',
-  auth(Role.ADMIN),
-  userController.getLockedUsers
-);
+router.get('/locked', auth(Role.ADMIN), userController.getLockedUsers);
 
 /**
  * @route PATCH /v1/users/:userId/unlock

@@ -1,23 +1,10 @@
 import { Request } from 'express';
-import { User } from '@prisma/client';
+import { User, SecurityEventType } from '@prisma/client';
 import prisma from '../client';
 import logger from '../config/logger';
 
-export enum SecurityEventType {
-  LOGIN_SUCCESS = 'LOGIN_SUCCESS',
-  LOGIN_FAILED = 'LOGIN_FAILED',
-  LOGOUT = 'LOGOUT',
-  REGISTER = 'REGISTER',
-  PASSWORD_RESET_REQUESTED = 'PASSWORD_RESET_REQUESTED',
-  PASSWORD_RESET_COMPLETED = 'PASSWORD_RESET_COMPLETED',
-  EMAIL_VERIFIED = 'EMAIL_VERIFIED',
-  ACCOUNT_LOCKED = 'ACCOUNT_LOCKED',
-  SUSPICIOUS_ACTIVITY = 'SUSPICIOUS_ACTIVITY',
-  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-}
-
 interface SecurityEventData {
-  userId?: number;
+  userId?: string;
   email?: string;
   ipAddress: string;
   userAgent: string;
@@ -41,7 +28,6 @@ const logSecurityEvent = async (data: SecurityEventData): Promise<void> => {
         eventType: data.eventType,
         details: data.details,
         success: data.success,
-        timestamp: new Date(),
       },
     });
 
@@ -70,7 +56,7 @@ const logLoginSuccess = async (user: User, req: Request): Promise<void> => {
   await logSecurityEvent({
     userId: user.id,
     email: user.email,
-    ipAddress: req.ip,
+    ipAddress: req.ip || '',
     userAgent: req.get('User-Agent') || 'Unknown',
     eventType: SecurityEventType.LOGIN_SUCCESS,
     details: {
@@ -87,7 +73,7 @@ const logLoginSuccess = async (user: User, req: Request): Promise<void> => {
 const logLoginFailed = async (email: string, req: Request, reason?: string): Promise<void> => {
   await logSecurityEvent({
     email,
-    ipAddress: req.ip,
+    ipAddress: req.ip || '',
     userAgent: req.get('User-Agent') || 'Unknown',
     eventType: SecurityEventType.LOGIN_FAILED,
     details: {
@@ -105,7 +91,7 @@ const logLogout = async (user: User, req: Request): Promise<void> => {
   await logSecurityEvent({
     userId: user.id,
     email: user.email,
-    ipAddress: req.ip,
+    ipAddress: req.ip || '',
     userAgent: req.get('User-Agent') || 'Unknown',
     eventType: SecurityEventType.LOGOUT,
     details: {
@@ -122,7 +108,7 @@ const logRegistration = async (user: User, req: Request): Promise<void> => {
   await logSecurityEvent({
     userId: user.id,
     email: user.email,
-    ipAddress: req.ip,
+    ipAddress: req.ip || '',
     userAgent: req.get('User-Agent') || 'Unknown',
     eventType: SecurityEventType.REGISTER,
     details: {
@@ -139,7 +125,7 @@ const logRegistration = async (user: User, req: Request): Promise<void> => {
 const logPasswordResetRequest = async (email: string, req: Request): Promise<void> => {
   await logSecurityEvent({
     email,
-    ipAddress: req.ip,
+    ipAddress: req.ip || '',
     userAgent: req.get('User-Agent') || 'Unknown',
     eventType: SecurityEventType.PASSWORD_RESET_REQUESTED,
     details: {
@@ -156,7 +142,7 @@ const logPasswordResetCompleted = async (user: User, req: Request): Promise<void
   await logSecurityEvent({
     userId: user.id,
     email: user.email,
-    ipAddress: req.ip,
+    ipAddress: req.ip || '',
     userAgent: req.get('User-Agent') || 'Unknown',
     eventType: SecurityEventType.PASSWORD_RESET_COMPLETED,
     details: {
@@ -171,7 +157,7 @@ const logPasswordResetCompleted = async (user: User, req: Request): Promise<void
  */
 const logRateLimitExceeded = async (req: Request, endpoint: string): Promise<void> => {
   await logSecurityEvent({
-    ipAddress: req.ip,
+    ipAddress: req.ip || '',
     userAgent: req.get('User-Agent') || 'Unknown',
     eventType: SecurityEventType.RATE_LIMIT_EXCEEDED,
     details: {
@@ -185,7 +171,7 @@ const logRateLimitExceeded = async (req: Request, endpoint: string): Promise<voi
 /**
  * Get security events for a user
  */
-const getUserSecurityEvents = async (userId: number, limit = 50): Promise<any[]> => {
+const getUserSecurityEvents = async (userId: string, limit = 50): Promise<any[]> => {
   return prisma.securityLog.findMany({
     where: { userId },
     orderBy: { timestamp: 'desc' },
@@ -223,4 +209,4 @@ export default {
   logRateLimitExceeded,
   getUserSecurityEvents,
   getRecentSecurityEvents,
-}; 
+};

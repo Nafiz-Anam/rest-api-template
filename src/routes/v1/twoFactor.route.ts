@@ -12,11 +12,7 @@ const router = express.Router();
  * @desc Setup 2FA for user
  * @access Private
  */
-router.post(
-  '/setup',
-  auth(),
-  twoFactorController.setupTwoFactor
-);
+router.post('/setup', auth(), twoFactorController.setupTwoFactor);
 
 /**
  * @route POST /v1/2fa/enable
@@ -47,11 +43,7 @@ router.post(
  * @desc Get 2FA status for user
  * @access Private
  */
-router.get(
-  '/status',
-  auth(),
-  twoFactorController.getTwoFactorStatus
-);
+router.get('/status', auth(), twoFactorController.getTwoFactorStatus);
 
 /**
  * @route POST /v1/2fa/regenerate-backup-codes
@@ -70,11 +62,7 @@ router.post(
  * @desc Verify 2FA token
  * @access Public
  */
-router.post(
-  '/verify',
-  validate(twoFactorValidation.verifyToken),
-  twoFactorController.verifyToken
-);
+router.post('/verify', validate(twoFactorValidation.verifyToken), twoFactorController.verifyToken);
 
 export default router;
 
@@ -265,4 +253,4 @@ export default router;
  *                       description: Whether backup codes are available
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
- */ 
+ */

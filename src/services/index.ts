@@ -8,3 +8,4 @@ export { default as passwordSecurityService } from './passwordSecurity.service';
 export { default as notificationService } from './notification.service';
 export { default as securityLoggingService } from './securityLogging.service';
 export { default as userActivityService } from './userActivity.service';
+export { ProfileService as profileService } from './profile.service';

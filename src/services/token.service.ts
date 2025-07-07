@@ -85,19 +85,22 @@ const verifyToken = async (token: string, type: TokenType): Promise<Token> => {
  * @param {Request} req - Express request object for device info
  * @returns {Promise<AuthTokensResponse>}
  */
-const generateAuthTokens = async (user: { id: string }, req: Request): Promise<AuthTokensResponse> => {
+const generateAuthTokens = async (
+  user: { id: string },
+  req: Request
+): Promise<AuthTokensResponse> => {
   const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
   const accessToken = generateToken(user.id, accessTokenExpires, TokenType.ACCESS);
 
   const refreshTokenExpires = moment().add(config.jwt.refreshExpirationDays, 'days');
   const refreshToken = generateToken(user.id, refreshTokenExpires, TokenType.REFRESH);
-  
+
   // Create device session
   const deviceSession = await deviceService.createDeviceSession(user.id, refreshToken, req);
 
   // Get full user data for notifications
   const fullUser = await userService.getUserById(user.id);
-  
+
   // Send login alert notification
   if (fullUser) {
     await notificationService.sendLoginAlert(fullUser, req, deviceSession);

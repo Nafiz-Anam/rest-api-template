@@ -104,14 +104,14 @@ const verifyBackupCode = async (userId: string, code: string): Promise<boolean> 
 const enableTwoFactor = async (userId: string, token: string): Promise<void> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { twoFactorSecret: true, isTwoFactorEnabled: true },
+    select: { twoFactorSecret: true, twoFactorEnabled: true },
   });
 
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (user.isTwoFactorEnabled) {
+  if (user.twoFactorEnabled) {
     throw new ApiError(httpStatus.BAD_REQUEST, '2FA is already enabled');
   }
 
@@ -128,8 +128,8 @@ const enableTwoFactor = async (userId: string, token: string): Promise<void> => 
   // Enable 2FA
   await prisma.user.update({
     where: { id: userId },
-    data: { 
-      isTwoFactorEnabled: true,
+    data: {
+      twoFactorEnabled: true,
       twoFactorVerified: true,
     },
   });
@@ -144,14 +144,14 @@ const enableTwoFactor = async (userId: string, token: string): Promise<void> => 
 const disableTwoFactor = async (userId: string, token: string): Promise<void> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { twoFactorSecret: true, isTwoFactorEnabled: true },
+    select: { twoFactorSecret: true, twoFactorEnabled: true },
   });
 
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (!user.isTwoFactorEnabled) {
+  if (!user.twoFactorEnabled) {
     throw new ApiError(httpStatus.BAD_REQUEST, '2FA is not enabled');
   }
 
@@ -164,8 +164,8 @@ const disableTwoFactor = async (userId: string, token: string): Promise<void> =>
   // Disable 2FA and clear secret
   await prisma.user.update({
     where: { id: userId },
-    data: { 
-      isTwoFactorEnabled: false,
+    data: {
+      twoFactorEnabled: false,
       twoFactorSecret: null,
       twoFactorBackupCodes: [],
       twoFactorVerified: false,
@@ -178,21 +178,23 @@ const disableTwoFactor = async (userId: string, token: string): Promise<void> =>
  * @param {string} userId - User ID
  * @returns {Promise<{secret: string, qrCode: string, backupCodes: string[]}>}
  */
-const setupTwoFactor = async (userId: string): Promise<{
+const setupTwoFactor = async (
+  userId: string
+): Promise<{
   secret: string;
   qrCode: string;
   backupCodes: string[];
 }> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { email: true, isTwoFactorEnabled: true },
+    select: { email: true, twoFactorEnabled: true },
   });
 
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  if (user.isTwoFactorEnabled) {
+  if (user.twoFactorEnabled) {
     throw new ApiError(httpStatus.BAD_REQUEST, '2FA is already enabled');
   }
 
@@ -204,7 +206,7 @@ const setupTwoFactor = async (userId: string): Promise<{
   // Save secret and backup codes (but don't enable yet)
   await prisma.user.update({
     where: { id: userId },
-    data: { 
+    data: {
       twoFactorSecret: secret,
       twoFactorBackupCodes: backupCodes,
     },
@@ -222,14 +224,14 @@ const setupTwoFactor = async (userId: string): Promise<{
 const verifyTwoFactor = async (userId: string, token: string): Promise<boolean> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { 
-      twoFactorSecret: true, 
-      isTwoFactorEnabled: true,
+    select: {
+      twoFactorSecret: true,
+      twoFactorEnabled: true,
       twoFactorBackupCodes: true,
     },
   });
 
-  if (!user || !user.isTwoFactorEnabled) {
+  if (!user || !user.twoFactorEnabled) {
     return false;
   }
 
@@ -256,13 +258,13 @@ const verifyTwoFactor = async (userId: string, token: string): Promise<boolean> 
 const regenerateBackupCodes = async (userId: string, token: string): Promise<string[]> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { 
-      twoFactorSecret: true, 
-      isTwoFactorEnabled: true,
+    select: {
+      twoFactorSecret: true,
+      twoFactorEnabled: true,
     },
   });
 
-  if (!user || !user.isTwoFactorEnabled) {
+  if (!user || !user.twoFactorEnabled) {
     throw new ApiError(httpStatus.BAD_REQUEST, '2FA is not enabled');
   }
 
@@ -289,13 +291,15 @@ const regenerateBackupCodes = async (userId: string, token: string): Promise<str
  * @param {string} userId - User ID
  * @returns {Promise<{enabled: boolean, setup: boolean}>}
  */
-const getTwoFactorStatus = async (userId: string): Promise<{
+const getTwoFactorStatus = async (
+  userId: string
+): Promise<{
   enabled: boolean;
   setup: boolean;
 }> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { isTwoFactorEnabled: true, twoFactorSecret: true },
+    select: { twoFactorEnabled: true, twoFactorSecret: true },
   });
 
   if (!user) {
@@ -303,7 +307,7 @@ const getTwoFactorStatus = async (userId: string): Promise<{
   }
 
   return {
-    enabled: user.isTwoFactorEnabled,
+    enabled: user.twoFactorEnabled,
     setup: !!user.twoFactorSecret,
   };
 };
@@ -320,4 +324,4 @@ export default {
   verifyTwoFactor,
   regenerateBackupCodes,
   getTwoFactorStatus,
-}; 
+};

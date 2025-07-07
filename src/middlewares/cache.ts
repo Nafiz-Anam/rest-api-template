@@ -47,11 +47,14 @@ export const clearCache = (pattern?: string) => {
 };
 
 // Clear cache every hour to prevent memory leaks
-setInterval(() => {
-  const oneHourAgo = Date.now() - 60 * 60 * 1000;
-  for (const [key, value] of cache.entries()) {
-    if (value.timestamp < oneHourAgo) {
-      cache.delete(key);
+setInterval(
+  () => {
+    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+    for (const [key, value] of cache.entries()) {
+      if (value.timestamp < oneHourAgo) {
+        cache.delete(key);
+      }
     }
-  }
-}, 60 * 60 * 1000); // Run every hour 
+  },
+  60 * 60 * 1000
+); // Run every hour

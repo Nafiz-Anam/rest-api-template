@@ -16,22 +16,14 @@ const router = express.Router();
  * @desc Register user
  * @access Public
  */
-router.post(
-  '/register',
-  validate(authValidation.register),
-  authController.register
-);
+router.post('/register', validate(authValidation.register), authController.register);
 
 /**
  * @route POST /v1/auth/login
  * @desc Login user
  * @access Public
  */
-router.post(
-  '/login',
-  validate(authValidation.login),
-  authController.login
-);
+router.post('/login', validate(authValidation.login), authController.login);
 
 /**
  * @route POST /v1/auth/verify-2fa
@@ -49,12 +41,7 @@ router.post(
  * @desc Logout user
  * @access Private
  */
-router.post(
-  '/logout',
-  auth(),
-  validate(authValidation.logout),
-  authController.logout
-);
+router.post('/logout', auth(), validate(authValidation.logout), authController.logout);
 
 /**
  * @route POST /v1/auth/refresh-tokens
@@ -94,22 +81,14 @@ router.post(
  * @desc Send verification email
  * @access Private
  */
-router.post(
-  '/send-verification-email',
-  auth(),
-  authController.sendVerificationEmail
-);
+router.post('/send-verification-email', auth(), authController.sendVerificationEmail);
 
 /**
  * @route POST /v1/auth/verify-email
  * @desc Verify email
  * @access Public
  */
-router.post(
-  '/verify-email',
-  validate(authValidation.verifyEmail),
-  authController.verifyEmail
-);
+router.post('/verify-email', validate(authValidation.verifyEmail), authController.verifyEmail);
 
 /**
  * @route POST /v1/auth/change-password
@@ -128,11 +107,7 @@ router.post(
  * @desc Setup 2FA
  * @access Private
  */
-router.post(
-  '/2fa/setup',
-  auth(),
-  authController.setupTwoFactor
-);
+router.post('/2fa/setup', auth(), authController.setupTwoFactor);
 
 /**
  * @route POST /v1/auth/2fa/enable
@@ -163,11 +138,7 @@ router.post(
  * @desc Get 2FA status
  * @access Private
  */
-router.get(
-  '/2fa/status',
-  auth(),
-  authController.getTwoFactorStatus
-);
+router.get('/2fa/status', auth(), authController.getTwoFactorStatus);
 
 /**
  * @route POST /v1/auth/2fa/regenerate-backup-codes

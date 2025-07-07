@@ -1,10 +1,9 @@
-import { PrismaClient } from '@prisma/client';
 import ApiError from '../utils/ApiError';
 import httpStatus from 'http-status';
 import pick from '../utils/pick';
-import { UserActivityService } from './userActivity.service';
-
-const prisma = new PrismaClient();
+import userActivityService from './userActivity.service';
+import prisma from '../client';
+import { ActivityType } from '@prisma/client';
 
 export interface ProfileUpdateData {
   firstName?: string;
@@ -16,21 +15,15 @@ export interface ProfileUpdateData {
   city?: string;
   state?: string;
   country?: string;
-  timezone?: string;
-  language?: string;
   avatar?: string;
 }
 
 export interface PreferencesUpdateData {
   emailNotifications?: boolean;
   smsNotifications?: boolean;
-  pushNotifications?: boolean;
   marketingEmails?: boolean;
   loginAlerts?: boolean;
   securityUpdates?: boolean;
-  theme?: 'light' | 'dark' | 'auto';
-  timezone?: string;
-  language?: string;
 }
 
 export interface PrivacySettingsData {
@@ -59,10 +52,9 @@ export class ProfileService {
         dateOfBirth: true,
         gender: true,
         location: true,
-        timezone: true,
-        language: true,
+        website: true,
         isEmailVerified: true,
-        isTwoFactorEnabled: true,
+        twoFactorEnabled: true,
         twoFactorVerified: true,
         createdAt: true,
         updatedAt: true,
@@ -81,15 +73,22 @@ export class ProfileService {
    */
   static async updateProfile(userId: string, data: ProfileUpdateData, ipAddress?: string) {
     const allowedFields = [
-      'name', 'phone', 'timezone', 'language', 'avatar', 'bio', 'dateOfBirth', 'gender', 'location'
+      'name',
+      'phone',
+      'avatar',
+      'bio',
+      'dateOfBirth',
+      'gender',
+      'location',
+      'website',
     ];
 
     const updateData = pick(data, allowedFields);
 
     // Validate phone number format
     if (updateData.phone) {
-      const phoneRegex = /^\+?[\d\s\-\(\)]+$/;
-      if (!phoneRegex.test(updateData.phone)) {
+      const phoneRegex = /^\+?[\d\s\-()]+$/;
+      if (!phoneRegex.test(updateData.phone as string)) {
         throw new Error('Invalid phone number format');
       }
     }
@@ -102,19 +101,24 @@ export class ProfileService {
         email: true,
         name: true,
         phone: true,
-        timezone: true,
-        language: true,
         avatar: true,
         bio: true,
         dateOfBirth: true,
         gender: true,
         location: true,
+        website: true,
         updatedAt: true,
       },
     });
 
     // Log profile update activity
-    await UserActivityService.logProfileUpdate(userId, updateData, ipAddress);
+    await userActivityService.createActivity({
+      userId,
+      activityType: 'PROFILE_UPDATE',
+      description: 'Profile updated',
+      metadata: { changes: updateData },
+      ipAddress,
+    });
 
     return user;
   }
@@ -134,11 +138,11 @@ export class ProfileService {
     }
 
     // Log preference update activity
-    await UserActivityService.createActivity({
+    await userActivityService.createActivity({
       userId,
-      type: 'preferences',
-      action: 'update',
-      details: { changes: data },
+      activityType: 'PROFILE_UPDATE',
+      description: 'Preferences updated',
+      metadata: { changes: data },
       ipAddress,
     });
 
@@ -148,7 +152,11 @@ export class ProfileService {
   /**
    * Update privacy settings
    */
-  static async updatePrivacySettings(userId: string, data: PrivacySettingsData, ipAddress?: string) {
+  static async updatePrivacySettings(
+    userId: string,
+    data: PrivacySettingsData,
+    ipAddress?: string
+  ) {
     // For now, we'll handle privacy settings in a simple way
     // In a real implementation, you might want to create a separate privacy settings table
     const user = await prisma.user.findUnique({
@@ -160,11 +168,11 @@ export class ProfileService {
     }
 
     // Log privacy settings update activity
-    await UserActivityService.createActivity({
+    await userActivityService.createActivity({
       userId,
-      type: 'privacy',
-      action: 'update',
-      details: { changes: data },
+      activityType: 'PROFILE_UPDATE',
+      description: 'Privacy settings updated',
+      metadata: { changes: data },
       ipAddress,
     });
 
@@ -180,11 +188,8 @@ export class ProfileService {
       select: {
         id: true,
         emailNotifications: true,
-        pushNotifications: true,
         privacySettings: true,
-        theme: true,
-        language: true,
-        timezone: true,
+        preferences: true,
       },
     });
 
@@ -212,10 +217,9 @@ export class ProfileService {
         dateOfBirth: true,
         gender: true,
         location: true,
-        timezone: true,
-        language: true,
+        website: true,
         isEmailVerified: true,
-        isTwoFactorEnabled: true,
+        twoFactorEnabled: true,
         twoFactorVerified: true,
         createdAt: true,
         updatedAt: true,
@@ -223,11 +227,11 @@ export class ProfileService {
     });
 
     // Log avatar update activity
-    await UserActivityService.createActivity({
+    await userActivityService.createActivity({
       userId,
-      type: 'profile',
-      action: 'avatar_update',
-      details: { avatarUrl },
+      activityType: 'PROFILE_UPDATE',
+      description: 'Avatar updated',
+      metadata: { avatarUrl },
       ipAddress,
     });
 
@@ -243,7 +247,8 @@ export class ProfileService {
     const user = await prisma.user.update({
       where: { id: userId },
       data: {
-        // Note: These fields don't exist in current schema, so we'll just update what we can
+        isActive: false,
+        isLocked: true,
       },
       select: {
         id: true,
@@ -253,11 +258,11 @@ export class ProfileService {
     });
 
     // Log account deletion activity
-    await UserActivityService.createActivity({
+    await userActivityService.createActivity({
       userId,
-      type: 'account',
-      action: 'deleted',
-      details: { reason },
+      activityType: ActivityType.ACCOUNT_LOCKED,
+      description: 'Account deleted',
+      metadata: { reason },
       ipAddress,
     });
 
@@ -326,4 +331,4 @@ export class ProfileService {
       avatar: user.avatar,
     }));
   }
-} 
+}

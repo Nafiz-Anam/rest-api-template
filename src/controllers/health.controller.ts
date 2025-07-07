@@ -1,9 +1,7 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync';
 import { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import prisma from '../client';
 
 /**
  * Health check endpoint
@@ -28,7 +26,7 @@ const databaseHealthCheck = catchAsync(async (req: Request, res: Response) => {
   try {
     // Test database connection
     await prisma.$queryRaw`SELECT 1`;
-    
+
     res.status(httpStatus.OK).send({
       status: 'OK',
       database: 'connected',
@@ -104,4 +102,4 @@ export default {
   healthCheck,
   databaseHealthCheck,
   detailedHealthCheck,
-}; 
+};

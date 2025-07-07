@@ -311,7 +311,7 @@ describe('Auth routes', () => {
 
   describe('POST /v1/auth/forgot-password', () => {
     beforeEach(() => {
-      jest.spyOn(emailService.transport, 'sendMail').mockClear();
+      jest.spyOn(emailService.transporter, 'sendMail').mockClear();
     });
 
     test('should return 204 and send reset password email to the user', async () => {
@@ -326,7 +326,11 @@ describe('Auth routes', () => {
         .send({ email: userOne.email })
         .expect(httpStatus.NO_CONTENT);
 
-      expect(sendResetPasswordEmailSpy).toHaveBeenCalledWith(userOne.email, expect.any(String));
+      expect(sendResetPasswordEmailSpy).toHaveBeenCalledWith(
+        userOne.email,
+        expect.any(String),
+        userOne.name
+      );
       const resetPasswordToken = sendResetPasswordEmailSpy.mock.calls[0][1];
       const dbResetPasswordTokenData = await prisma.token.findFirst({
         where: {
@@ -507,7 +511,7 @@ describe('Auth routes', () => {
 
   describe('POST /v1/auth/send-verification-email', () => {
     beforeEach(() => {
-      jest.spyOn(emailService.transport, 'sendMail').mockClear();
+      jest.spyOn(emailService.transporter, 'sendMail').mockClear();
     });
 
     test('should return 204 and send verification email to the user', async () => {
@@ -527,7 +531,11 @@ describe('Auth routes', () => {
         .set('Authorization', `Bearer ${userOneAccessToken}`)
         .expect(httpStatus.NO_CONTENT);
 
-      expect(sendVerificationEmailSpy).toHaveBeenCalledWith(userOne.email, expect.any(String));
+      expect(sendVerificationEmailSpy).toHaveBeenCalledWith(
+        userOne.email,
+        expect.any(String),
+        userOne.name
+      );
       const verifyEmailToken = sendVerificationEmailSpy.mock.calls[0][1];
       const dbVerifyEmailToken = await prisma.token.findFirst({
         where: {
@@ -762,7 +770,7 @@ describe('Auth middleware', () => {
 
   test('should call next with unauthorized error if user is not found', async () => {
     const userOneAccessToken = tokenService.generateToken(
-      2000,
+      '2000',
       moment().add(config.jwt.accessExpirationMinutes, 'minutes'),
       TokenType.ACCESS
     );

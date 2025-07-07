@@ -22,4 +22,4 @@ export default {
   trustDevice,
   removeDevice,
   removeAllOtherDevices,
-}; 
+};

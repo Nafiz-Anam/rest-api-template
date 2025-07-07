@@ -8,6 +8,7 @@ const envVarsSchema = Joi.object()
   .keys({
     NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
     PORT: Joi.number().default(3000),
+    CLIENT_URL: Joi.string().default('http://localhost:3000').description('Client application URL'),
     JWT_SECRET: Joi.string().required().description('JWT secret key'),
     JWT_ACCESS_EXPIRATION_MINUTES: Joi.number()
       .default(30)
@@ -58,4 +59,5 @@ export default {
     },
     from: envVars.EMAIL_FROM,
   },
+  clientUrl: envVars.CLIENT_URL,
 };

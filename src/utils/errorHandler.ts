@@ -7,7 +7,7 @@ import ApiError from './ApiError';
 
 export const errorConverter: ErrorRequestHandler = (err, req, res, next) => {
   let error = err;
-  
+
   if (!(error instanceof ApiError)) {
     const statusCode =
       error.statusCode || error instanceof Prisma.PrismaClientKnownRequestError
@@ -16,7 +16,7 @@ export const errorConverter: ErrorRequestHandler = (err, req, res, next) => {
     const message = error.message || httpStatus[statusCode];
     error = new ApiError(statusCode, message, false, err.stack);
   }
-  
+
   // Log error with request context
   logger.error('Error occurred:', {
     error: error.message,
@@ -26,13 +26,13 @@ export const errorConverter: ErrorRequestHandler = (err, req, res, next) => {
     ip: req.ip,
     userAgent: req.get('User-Agent'),
   });
-  
+
   next(error);
 };
 
 export const errorHandler: ErrorRequestHandler = (err, req, res, next) => {
   let { statusCode, message } = err;
-  
+
   if (config.env === 'production' && !err.isOperational) {
     statusCode = httpStatus.INTERNAL_SERVER_ERROR;
     message = httpStatus[httpStatus.INTERNAL_SERVER_ERROR];
@@ -61,7 +61,7 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Handle uncaught exceptions
-process.on('uncaughtException', (error) => {
+process.on('uncaughtException', error => {
   logger.error('Uncaught Exception:', error);
   process.exit(1);
-}); 
+});

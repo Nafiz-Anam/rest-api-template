@@ -15,31 +15,21 @@ router.use(auth());
  * @desc Get user profile
  * @access Private
  */
-router.get(
-  '/',
-  profileController.getUserProfile
-);
+router.get('/', profileController.getUserProfile);
 
 /**
  * @route PATCH /v1/profile
  * @desc Update user profile
  * @access Private
  */
-router.patch(
-  '/',
-  validate(profileValidation.updateProfile),
-  profileController.updateUserProfile
-);
+router.patch('/', validate(profileValidation.updateProfile), profileController.updateUserProfile);
 
 /**
  * @route GET /v1/profile/preferences
  * @desc Get user preferences
  * @access Private
  */
-router.get(
-  '/preferences',
-  profileController.getUserPreferences
-);
+router.get('/preferences', profileController.getUserPreferences);
 
 /**
  * @route PATCH /v1/profile/preferences
@@ -57,10 +47,7 @@ router.patch(
  * @desc Get privacy settings
  * @access Private
  */
-router.get(
-  '/privacy',
-  profileController.getPrivacySettings
-);
+router.get('/privacy', profileController.getPrivacySettings);
 
 /**
  * @route PATCH /v1/profile/privacy
@@ -78,30 +65,21 @@ router.patch(
  * @desc Get account status
  * @access Private
  */
-router.get(
-  '/account-status',
-  profileController.getAccountStatus
-);
+router.get('/account-status', profileController.getAccountStatus);
 
 /**
  * @route GET /v1/profile/stats
  * @desc Get user statistics
  * @access Private
  */
-router.get(
-  '/stats',
-  profileController.getUserStats
-);
+router.get('/stats', profileController.getUserStats);
 
 /**
  * @route GET /v1/profile/export
  * @desc Export user data
  * @access Private
  */
-router.get(
-  '/export',
-  profileController.exportUserData
-);
+router.get('/export', profileController.exportUserData);
 
 /**
  * @route DELETE /v1/profile/account
@@ -131,9 +109,6 @@ router.post(
  * @desc Remove avatar
  * @access Private
  */
-router.delete(
-  '/avatar',
-  profileController.removeAvatar
-);
+router.delete('/avatar', profileController.removeAvatar);
 
-export default router; 
+export default router;

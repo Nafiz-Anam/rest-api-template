@@ -9,16 +9,6 @@ import config from '../../config/config';
 
 const router = express.Router();
 
-// Health check endpoint (excluded from rate limiting)
-router.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    environment: config.env,
-    uptime: process.uptime(),
-  });
-});
-
 const defaultRoutes = [
   {
     path: '/auth',
@@ -42,23 +32,31 @@ const defaultRoutes = [
   },
 ];
 
-const devRoutes = [
-  // routes available only in development mode
-  {
-    path: '/docs',
-    route: docsRoute,
-  },
-];
+// routes available only in development mode
+// const devRoutes = [
+//   {
+//     path: '/docs',
+//     route: docsRoute,
+//   },
+// ];
 
+// Debug log to check route registration
 defaultRoutes.forEach(route => {
+  console.log(
+    'Registering route:',
+    route.path,
+    'Type:',
+    typeof route.route,
+    'IsRouter:',
+    route.route && typeof route.route.use === 'function'
+  );
   router.use(route.path, route.route);
 });
 
-/* istanbul ignore next */
-if (config.env === 'development') {
-  devRoutes.forEach(route => {
-    router.use(route.path, route.route);
-  });
-}
+// if (config.env === 'development') {
+//   devRoutes.forEach(route => {
+//     router.use(route.path, route.route);
+//   });
+// }
 
 export default router;
