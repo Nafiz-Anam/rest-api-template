@@ -18,8 +18,12 @@ import routes from './routes/v1';
 import { healthController } from './controllers';
 import { errorConverter, errorHandler } from './middlewares/error';
 import ApiError from './utils/ApiError';
+import emailService, { verifySmtpConnection } from './services/email.service';
 
 const app = express();
+
+// Check SMTP connection at startup
+verifySmtpConnection();
 
 if (config.env !== 'test') {
   app.use(morgan.successHandler);

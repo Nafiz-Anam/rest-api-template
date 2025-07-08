@@ -5,7 +5,7 @@ import logger from '../config/logger';
 const transporter = nodemailer.createTransport({
   host: config.email.smtp.host,
   port: config.email.smtp.port,
-  secure: false, // Default to false for most SMTP servers
+  secure: true,
   auth: {
     user: config.email.smtp.auth.user,
     pass: config.email.smtp.auth.pass,
@@ -294,6 +294,18 @@ If this wasn't you, please secure your account immediately.`;
   </div>`;
 
   await sendEmail(to, subject, text, html);
+};
+
+/**
+ * Verify SMTP connection at startup
+ */
+export const verifySmtpConnection = async () => {
+  try {
+    await transporter.verify();
+    logger.info('SMTP server is reachable and ready to send emails.');
+  } catch (error) {
+    logger.error('SMTP server is NOT reachable:', error);
+  }
 };
 
 export default {

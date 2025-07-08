@@ -39,7 +39,14 @@ const createNotification = async (
  */
 const sendLoginAlert = async (user: any, req: Request, deviceInfo: any): Promise<void> => {
   // Check if user has login alerts enabled (stored in preferences)
-  const userPreferences = user.preferences ? JSON.parse(user.preferences as string) : {};
+  let userPreferences: any = {};
+  if (user.preferences) {
+    if (typeof user.preferences === 'string') {
+      userPreferences = JSON.parse(user.preferences);
+    } else {
+      userPreferences = user.preferences;
+    }
+  }
   if (!userPreferences.loginAlerts) {
     return;
   }
@@ -55,7 +62,14 @@ const sendLoginAlert = async (user: any, req: Request, deviceInfo: any): Promise
   });
 
   // Send email notification if enabled
-  const emailPrefs = user.emailNotifications ? JSON.parse(user.emailNotifications as string) : {};
+  let emailPrefs: any = {};
+  if (user.emailNotifications) {
+    if (typeof user.emailNotifications === 'string') {
+      emailPrefs = JSON.parse(user.emailNotifications);
+    } else {
+      emailPrefs = user.emailNotifications;
+    }
+  }
   if (emailPrefs.loginAlerts) {
     try {
       await emailService.sendLoginAlertEmail(user.email, {
