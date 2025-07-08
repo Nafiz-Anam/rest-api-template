@@ -23,6 +23,10 @@ export interface AuthTokensResponse {
   refresh?: TokenResponse;
   device?: DeviceInfo;
   user?: PrismaUser;
+  session?: {
+    id: string;
+    expires: Date;
+  };
 }
 
 export interface UserWithPassword extends PrismaUser {

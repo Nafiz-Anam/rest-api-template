@@ -9,25 +9,25 @@ components:
         email:
           type: string
           format: email
-          example: "user@example.com"
+          example: 'user@example.com'
         name:
           type: string
-          example: "John Doe"
+          example: 'John Doe'
         role:
           type: string
           enum: [USER, ADMIN]
-          example: "USER"
+          example: 'USER'
         isEmailVerified:
           type: boolean
           example: true
         createdAt:
           type: string
           format: date-time
-          example: "2023-01-01T00:00:00.000Z"
+          example: '2023-01-01T00:00:00.000Z'
         updatedAt:
           type: string
           format: date-time
-          example: "2023-01-01T00:00:00.000Z"
+          example: '2023-01-01T00:00:00.000Z'
       required:
         - id
         - email
@@ -42,20 +42,20 @@ components:
         email:
           type: string
           format: email
-          example: "user@example.com"
+          example: 'user@example.com'
         name:
           type: string
-          example: "John Doe"
+          example: 'John Doe'
         password:
           type: string
           format: password
           minLength: 8
-          example: "password123"
+          example: 'password123'
         role:
           type: string
           enum: [USER, ADMIN]
-          default: "USER"
-          example: "USER"
+          default: 'USER'
+          example: 'USER'
       required:
         - email
         - password
@@ -66,25 +66,25 @@ components:
         email:
           type: string
           format: email
-          example: "user@example.com"
+          example: 'user@example.com'
         name:
           type: string
-          example: "John Doe"
+          example: 'John Doe'
         role:
           type: string
           enum: [USER, ADMIN]
-          example: "USER"
+          example: 'USER'
 
     Token:
       type: object
       properties:
         token:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
         expires:
           type: string
           format: date-time
-          example: "2023-01-01T00:30:00.000Z"
+          example: '2023-01-01T00:30:00.000Z'
       required:
         - token
         - expires
@@ -106,11 +106,11 @@ components:
         email:
           type: string
           format: email
-          example: "user@example.com"
+          example: 'user@example.com'
         password:
           type: string
           format: password
-          example: "password123"
+          example: 'password123'
       required:
         - email
         - password
@@ -121,15 +121,15 @@ components:
         email:
           type: string
           format: email
-          example: "user@example.com"
+          example: 'user@example.com'
         name:
           type: string
-          example: "John Doe"
+          example: 'John Doe'
         password:
           type: string
           format: password
           minLength: 8
-          example: "password123"
+          example: 'password123'
       required:
         - email
         - name
@@ -140,7 +140,7 @@ components:
       properties:
         refreshToken:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'
       required:
         - refreshToken
 
@@ -150,7 +150,7 @@ components:
         email:
           type: string
           format: email
-          example: "user@example.com"
+          example: 'user@example.com'
       required:
         - email
 
@@ -159,12 +159,12 @@ components:
       properties:
         token:
           type: string
-          example: "reset-token-here"
+          example: 'reset-token-here'
         password:
           type: string
           format: password
           minLength: 8
-          example: "newpassword123"
+          example: 'newpassword123'
       required:
         - token
         - password
@@ -174,32 +174,54 @@ components:
       properties:
         token:
           type: string
-          example: "verification-token-here"
+          example: 'verification-token-here'
       required:
         - token
+
+    VerifyEmailOtpRequest:
+      type: object
+      properties:
+        userId:
+          type: string
+          example: 'clv1abcde0001xyz1234'
+        otp:
+          type: string
+          example: '123456'
+      required:
+        - userId
+        - otp
+
+    VerifyEmailOtpResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: 'Email verified successfully'
+      required:
+        - message
 
     HealthCheck:
       type: object
       properties:
         status:
           type: string
-          example: "ok"
+          example: 'ok'
         timestamp:
           type: string
           format: date-time
-          example: "2023-01-01T00:00:00.000Z"
+          example: '2023-01-01T00:00:00.000Z'
         uptime:
           type: number
           example: 3600
         database:
           type: string
-          example: "connected"
+          example: 'connected'
         version:
           type: string
-          example: "1.0.0"
+          example: '1.0.0'
         environment:
           type: string
-          example: "development"
+          example: 'development'
       required:
         - status
         - timestamp
@@ -214,10 +236,10 @@ components:
           example: 400
         message:
           type: string
-          example: "Bad Request"
+          example: 'Bad Request'
         stack:
           type: string
-          description: "Only included in development environment"
+          description: 'Only included in development environment'
           example: "Error: Bad Request\n    at ..."
       required:
         - code
@@ -255,6 +277,62 @@ components:
         pagination:
           $ref: '#/components/schemas/Pagination'
 
+    Session:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          example: 'deviceId-abcdefgh'
+        deviceId:
+          type: string
+          example: 'deviceId123'
+        deviceName:
+          type: string
+          example: 'Chrome Browser'
+        ipAddress:
+          type: string
+          example: '192.168.1.10'
+        userAgent:
+          type: string
+          example: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/91.0.4472.124'
+        isActive:
+          type: boolean
+          example: true
+        lastActivity:
+          type: string
+          format: date-time
+          example: '2023-01-01T12:00:00.000Z'
+        expiresAt:
+          type: string
+          format: date-time
+          example: '2023-01-02T12:00:00.000Z'
+      required:
+        - sessionId
+        - deviceId
+        - deviceName
+        - isActive
+        - lastActivity
+        - expiresAt
+
+    SessionListResponse:
+      type: object
+      properties:
+        sessions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Session'
+      required:
+        - sessions
+
+    EndSessionRequest:
+      type: object
+      properties:
+        deviceId:
+          type: string
+          example: 'deviceId123'
+      required:
+        - deviceId
+
   responses:
     Success:
       description: Success
@@ -265,7 +343,7 @@ components:
             properties:
               message:
                 type: string
-                example: "Operation completed successfully"
+                example: 'Operation completed successfully'
 
     Created:
       description: Created successfully
@@ -276,7 +354,7 @@ components:
             properties:
               message:
                 type: string
-                example: "Resource created successfully"
+                example: 'Resource created successfully'
 
     BadRequest:
       description: Bad Request
@@ -286,7 +364,7 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 400
-            message: "Bad Request"
+            message: 'Bad Request'
 
     Unauthorized:
       description: Unauthorized
@@ -296,7 +374,7 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 401
-            message: "Please authenticate"
+            message: 'Please authenticate'
 
     Forbidden:
       description: Forbidden
@@ -306,7 +384,7 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 403
-            message: "Forbidden"
+            message: 'Forbidden'
 
     NotFound:
       description: Not found
@@ -316,7 +394,7 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 404
-            message: "Not found"
+            message: 'Not found'
 
     Conflict:
       description: Conflict
@@ -326,7 +404,7 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 409
-            message: "Resource already exists"
+            message: 'Resource already exists'
 
     ValidationError:
       description: Validation Error
@@ -340,7 +418,7 @@ components:
                 example: 400
               message:
                 type: string
-                example: "Validation Error"
+                example: 'Validation Error'
               errors:
                 type: array
                 items:
@@ -348,10 +426,10 @@ components:
                   properties:
                     field:
                       type: string
-                      example: "email"
+                      example: 'email'
                     message:
                       type: string
-                      example: "Email is required"
+                      example: 'Email is required'
 
     InternalServerError:
       description: Internal Server Error
@@ -361,7 +439,7 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 500
-            message: "Internal Server Error"
+            message: 'Internal Server Error'
 
     ServiceUnavailable:
       description: Service Unavailable
@@ -371,7 +449,7 @@ components:
             $ref: '#/components/schemas/Error'
           example:
             code: 503
-            message: "Service Unavailable"
+            message: 'Service Unavailable'
 
   securitySchemes:
     bearerAuth:

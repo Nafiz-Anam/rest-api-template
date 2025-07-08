@@ -1,7 +1,7 @@
 import swaggerJsdoc from 'swagger-jsdoc';
 import fs from 'fs';
 import path from 'path';
-import swaggerDefinition from '../src/docs/swaggerDef.js';
+import swaggerDefinition from '../src/docs/swaggerDef';
 
 try {
   const specs = swaggerJsdoc({

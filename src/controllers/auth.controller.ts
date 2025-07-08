@@ -5,6 +5,9 @@ import authService from '../services/auth.service';
 import tokenService from '../services/token.service';
 import emailService from '../services/email.service';
 import userService from '../services/user.service';
+import { createEmailVerificationOtp } from '../services/otp.service';
+import { sendEmailVerificationOtp } from '../services/email.service';
+import deviceService from '../services/device.service';
 import { Request, Response } from 'express';
 
 /**
@@ -14,10 +17,12 @@ import { Request, Response } from 'express';
  */
 const register = catchAsync(async (req: Request, res: Response) => {
   const user = await userService.createUser(req.body);
-  const tokens = await tokenService.generateAuthTokens(user as any, req);
-  const verifyEmailToken = await tokenService.generateVerifyEmailToken(user as any);
-  await emailService.sendVerificationEmail(user.email, verifyEmailToken, user.name || 'User');
-  res.status(httpStatus.CREATED).send({ user, tokens });
+  console.log('[REGISTER] User created:', user.id, user.email);
+  // Generate OTP and send via email
+  const otp = await createEmailVerificationOtp(user.id);
+  console.log('[REGISTER] OTP generated:', otp, 'for user:', user.id);
+  await sendEmailVerificationOtp(user.email, otp, user.name || 'User');
+  res.status(httpStatus.CREATED).send({ user });
 });
 
 /**
@@ -27,7 +32,9 @@ const register = catchAsync(async (req: Request, res: Response) => {
  */
 const login = catchAsync(async (req: Request, res: Response) => {
   const { email, password } = req.body;
+  console.log('[LOGIN] Attempt for:', email);
   const tokens = await authService.loginUserWithEmailAndPassword(email, password, req);
+  console.log('[LOGIN] Success for:', email, 'Tokens:', tokens);
   res.send({ tokens });
 });
 
@@ -37,7 +44,9 @@ const login = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const logout = catchAsync(async (req: Request, res: Response) => {
-  await authService.logout(req.body.refreshToken);
+  // Use req.user.id if available, otherwise extract from token if needed
+  const userId = (req.user as any)?.id;
+  await authService.logout(req.body.refreshToken, req, userId);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
@@ -196,6 +205,37 @@ const checkAccountLockoutStatus = catchAsync(async (req: Request, res: Response)
   res.send(status);
 });
 
+/**
+ * Verify email OTP
+ * @route POST /v1/auth/verify-email-otp
+ * @access Public
+ */
+const verifyEmailOtp = catchAsync(async (req: Request, res: Response) => {
+  const { userId, otp } = req.body;
+  const valid = await require('../services/otp.service').verifyEmailOtp(userId, otp);
+  if (!valid) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+  }
+  await userService.updateUserById(userId, { isEmailVerified: true });
+  res.status(httpStatus.OK).send({ message: 'Email verified successfully' });
+});
+
+const listActiveSessions = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.user as any)?.id;
+  if (!userId) throw new ApiError(httpStatus.UNAUTHORIZED, 'User not authenticated');
+  const sessions = await deviceService.listActiveDeviceSessions(userId);
+  res.send({ sessions });
+});
+
+const endSession = catchAsync(async (req: Request, res: Response) => {
+  const userId = (req.user as any)?.id;
+  const { deviceId } = req.body;
+  if (!userId || !deviceId)
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Missing userId or deviceId');
+  await require('../services/token.service').endUserSession(userId, deviceId);
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
 export default {
   register,
   login,
@@ -213,4 +253,7 @@ export default {
   getTwoFactorStatus,
   regenerateBackupCodes,
   checkAccountLockoutStatus,
+  verifyEmailOtp,
+  listActiveSessions,
+  endSession,
 };

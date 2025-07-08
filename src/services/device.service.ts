@@ -63,6 +63,12 @@ const createDeviceSession = async (
   req: Request
 ): Promise<DeviceSession> => {
   const deviceInfo = extractDeviceInfo(req);
+  console.log(
+    '[DEVICE] Creating/updating device session for user:',
+    userId,
+    'Device info:',
+    deviceInfo
+  );
 
   // Check if device already exists
   let device = await getDeviceById(deviceInfo.deviceId, userId);
@@ -219,12 +225,26 @@ const getDeviceSessions = async (userId: string): Promise<DeviceSession[]> => {
  * @returns {DeviceInfo}
  */
 const extractDeviceInfo = (req: Request): DeviceInfo => {
+  const userAgent = req.get('User-Agent') || '';
+  let deviceName = (req.headers['x-device-name'] as string) || '';
+  if (!deviceName) {
+    // Simple user-agent parsing for common browsers/devices
+    if (/iPhone/i.test(userAgent)) deviceName = 'iPhone';
+    else if (/iPad/i.test(userAgent)) deviceName = 'iPad';
+    else if (/Android/i.test(userAgent)) deviceName = 'Android';
+    else if (/Windows/i.test(userAgent)) deviceName = 'Windows PC';
+    else if (/Macintosh/i.test(userAgent)) deviceName = 'Mac';
+    else if (/Chrome/i.test(userAgent)) deviceName = 'Chrome Browser';
+    else if (/Firefox/i.test(userAgent)) deviceName = 'Firefox Browser';
+    else if (/Safari/i.test(userAgent)) deviceName = 'Safari Browser';
+    else deviceName = userAgent.split(' ')[0] || 'Unknown Device';
+  }
   return {
     deviceId: (req.headers['x-device-id'] as string) || uuidv4(),
-    deviceName: (req.headers['x-device-name'] as string) || 'Unknown Device',
+    deviceName,
     deviceType: (req.headers['x-device-type'] as DeviceType) || DeviceType.UNKNOWN,
     ipAddress: req.ip,
-    userAgent: req.get('User-Agent') || undefined,
+    userAgent: userAgent || undefined,
   };
 };
 
@@ -242,6 +262,13 @@ const hasReachedDeviceLimit = async (userId: string, limit: number = 3): Promise
   return deviceCount >= limit;
 };
 
+const listActiveDeviceSessions = async (userId: string) => {
+  return prisma.userSession.findMany({
+    where: { userId, isActive: true },
+    orderBy: { lastActivity: 'desc' },
+  });
+};
+
 export default {
   getUserDevices,
   getDeviceById,
@@ -252,4 +279,5 @@ export default {
   getDeviceSessions,
   extractDeviceInfo,
   hasReachedDeviceLimit,
+  listActiveDeviceSessions,
 };

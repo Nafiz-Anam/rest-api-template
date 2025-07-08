@@ -91,6 +91,17 @@ router.post('/send-verification-email', auth(), authController.sendVerificationE
 router.post('/verify-email', validate(authValidation.verifyEmail), authController.verifyEmail);
 
 /**
+ * @route POST /v1/auth/verify-email-otp
+ * @desc Verify email using OTP
+ * @access Public
+ */
+router.post(
+  '/verify-email-otp',
+  validate(authValidation.verifyEmailOtp),
+  authController.verifyEmailOtp
+);
+
+/**
  * @route POST /v1/auth/change-password
  * @desc Change password
  * @access Private
@@ -162,6 +173,9 @@ router.get(
   validate(authValidation.checkAccountLockout),
   authController.checkAccountLockoutStatus
 );
+
+router.get('/sessions', auth(), authController.listActiveSessions);
+router.post('/sessions/end', auth(), authController.endSession);
 
 export default router;
 

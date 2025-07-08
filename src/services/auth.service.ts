@@ -8,6 +8,8 @@ import { encryptPassword, isPasswordMatch } from '../utils/encryption';
 import { Request } from 'express';
 import moment from 'moment';
 import config from '../config/config';
+import userActivityService from './userActivity.service';
+import deviceService from './device.service';
 
 /**
  * Login with username and password
@@ -41,6 +43,23 @@ const loginUserWithEmailAndPassword = async (email: string, password: string, re
     throw new ApiError(httpStatus.FORBIDDEN, 'Account is deactivated. Please contact support.');
   }
 
+  // Check if email is verified
+  if (!user.isEmailVerified) {
+    throw new ApiError(
+      httpStatus.UNAUTHORIZED,
+      'Email not verified. Please verify your email before logging in.'
+    );
+  }
+
+  // Enforce device limit (max 3 devices)
+  const hasReachedDeviceLimit = await deviceService.hasReachedDeviceLimit(user.id, 3);
+  if (hasReachedDeviceLimit) {
+    throw new ApiError(
+      httpStatus.FORBIDDEN,
+      'Device limit reached. Please remove an old device to log in from a new one.'
+    );
+  }
+
   // Reset failed login attempts on successful login
   if (user.failedLoginAttempts > 0) {
     await userService.updateUserById(user.id, { failedLoginAttempts: 0, lockoutUntil: null });
@@ -49,33 +68,32 @@ const loginUserWithEmailAndPassword = async (email: string, password: string, re
   // Update last login
   await userService.updateUserById(user.id, { lastLoginAt: new Date() });
 
-  // Generate tokens - simplified for now
-  const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
-  const accessToken = tokenService.generateToken(user.id, accessTokenExpires, TokenType.ACCESS);
+  // Generate tokens and persist device/session
+  const tokens = await tokenService.generateAuthTokens(user, req);
 
-  const refreshTokenExpires = moment().add(config.jwt.refreshExpirationDays, 'days');
-  const refreshToken = tokenService.generateToken(user.id, refreshTokenExpires, TokenType.REFRESH);
+  // Log login activity
+  await userActivityService.logLoginActivity(user.id, req);
 
-  return {
-    access: {
-      token: accessToken,
-      expires: accessTokenExpires.toDate(),
-    },
-    refresh: {
-      token: refreshToken,
-      expires: refreshTokenExpires.toDate(),
-    },
-  };
+  return tokens;
 };
 
 /**
  * Logout
  * @param {string} refreshToken
+ * @param {Request} req
+ * @param {string} userId
  * @returns {Promise}
  */
-const logout = async (refreshToken: string) => {
+const logout = async (refreshToken: string, req: Request, userId: string) => {
   const refreshTokenDoc = await tokenService.verifyToken(refreshToken, TokenType.REFRESH);
   await tokenService.blacklistToken(refreshTokenDoc.id);
+  // Log logout activity
+  await userActivityService.logLogoutActivity(userId, req);
+  // End user session for this device
+  const deviceId = (req.headers['x-device-id'] as string) || undefined;
+  if (deviceId) {
+    await tokenService.endUserSession(userId, deviceId);
+  }
 };
 
 /**

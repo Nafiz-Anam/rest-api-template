@@ -57,6 +57,7 @@ model User {
   devices             Device[]
   notifications       Notification[]
   passwordHistory     PasswordHistory[]
+  otps                Otp[]
   
   @@map("users")
 }
@@ -182,6 +183,20 @@ model PasswordHistory {
   @@map("password_history")
 }
 
+model Otp {
+  id         String   @id @default(cuid())
+  userId     String
+  otp        String
+  type       OtpType
+  expiresAt  DateTime
+  consumed   Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
 // Enums
 enum Role {
   USER
@@ -257,4 +272,9 @@ enum Gender {
   FEMALE
   OTHER
   PREFER_NOT_TO_SAY
+}
+
+enum OtpType {
+  EMAIL_VERIFICATION
+  // Add more types as needed (e.g., PHONE_VERIFICATION, PASSWORD_RESET)
 }

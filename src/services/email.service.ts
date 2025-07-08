@@ -297,6 +297,20 @@ If this wasn't you, please secure your account immediately.`;
 };
 
 /**
+ * Send email verification OTP
+ * @param {string} to
+ * @param {string} otp
+ * @param {string} name
+ * @returns {Promise}
+ */
+export const sendEmailVerificationOtp = async (to: string, otp: string, name: string) => {
+  const subject = 'Your Email Verification Code';
+  const text = `Dear ${name},\nYour email verification code is: ${otp}\nThis code will expire in 10 minutes. If you did not create an account, please ignore this email.`;
+  const html = `<div>Dear ${name},<br><br>Your email verification code is: <b>${otp}</b><br><br>This code will expire in 10 minutes.<br>If you did not create an account, please ignore this email.</div>`;
+  await sendEmail(to, subject, text, html);
+};
+
+/**
  * Verify SMTP connection at startup
  */
 export const verifySmtpConnection = async () => {
@@ -321,5 +335,6 @@ export default {
   sendPasswordChangeEmail,
   sendTwoFactorEmail,
   sendDeviceLoginEmail,
+  sendEmailVerificationOtp,
   transporter,
 };

@@ -50,6 +50,7 @@ const saveToken = async (
   type: TokenType,
   blacklisted = false
 ): Promise<Token> => {
+  console.log('[TOKEN] Saving token:', { token, userId, type, expires: expires.toISOString() });
   const tokenDoc = await prisma.token.create({
     data: {
       token,
@@ -91,12 +92,30 @@ const generateAuthTokens = async (
 ): Promise<AuthTokensResponse> => {
   const accessTokenExpires = moment().add(config.jwt.accessExpirationMinutes, 'minutes');
   const accessToken = generateToken(user.id, accessTokenExpires, TokenType.ACCESS);
+  await saveToken(accessToken, user.id, accessTokenExpires, TokenType.ACCESS);
 
   const refreshTokenExpires = moment().add(config.jwt.refreshExpirationDays, 'days');
   const refreshToken = generateToken(user.id, refreshTokenExpires, TokenType.REFRESH);
+  await saveToken(refreshToken, user.id, refreshTokenExpires, TokenType.REFRESH);
 
   // Create device session
   const deviceSession = await deviceService.createDeviceSession(user.id, refreshToken, req);
+
+  // Create user session
+  const sessionId = deviceSession.deviceId + '-' + refreshToken.slice(0, 8);
+  const session = await prisma.userSession.create({
+    data: {
+      userId: user.id,
+      sessionId,
+      deviceId: deviceSession.deviceId,
+      deviceName: deviceSession.deviceName,
+      ipAddress: deviceSession.ipAddress,
+      userAgent: deviceSession.userAgent,
+      isActive: true,
+      lastActivity: new Date(),
+      expiresAt: refreshTokenExpires.toDate(),
+    },
+  });
 
   // Get full user data for notifications
   const fullUser = await userService.getUserById(user.id);
@@ -118,6 +137,10 @@ const generateAuthTokens = async (
     device: {
       id: deviceSession.deviceId,
       name: deviceSession.deviceName,
+    },
+    session: {
+      id: session.sessionId,
+      expires: session.expiresAt,
     },
   };
 };
@@ -200,6 +223,13 @@ const revokeAllUserTokens = async (userId: string): Promise<void> => {
   });
 };
 
+const endUserSession = async (userId: string, deviceId: string) => {
+  await prisma.userSession.updateMany({
+    where: { userId, deviceId, isActive: true },
+    data: { isActive: false, lastActivity: new Date() },
+  });
+};
+
 export default {
   generateToken,
   saveToken,
@@ -211,4 +241,5 @@ export default {
   removeExpiredTokens,
   getUserTokens,
   revokeAllUserTokens,
+  endUserSession,
 };

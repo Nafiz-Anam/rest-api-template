@@ -14,7 +14,6 @@ const login = {
   body: Joi.object().keys({
     email: Joi.string().required().email(),
     password: Joi.string().required(),
-    deviceName: Joi.string().min(1).max(100).required(),
   }),
 };
 
@@ -89,6 +88,13 @@ const checkAccountLockout = {
   }),
 };
 
+const verifyEmailOtp = {
+  body: Joi.object().keys({
+    userId: Joi.string().required(),
+    otp: Joi.string().length(6).required(),
+  }),
+};
+
 export default {
   register,
   login,
@@ -103,4 +109,5 @@ export default {
   disableTwoFactor,
   regenerateBackupCodes,
   checkAccountLockout,
+  verifyEmailOtp,
 };
