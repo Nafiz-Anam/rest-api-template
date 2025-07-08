@@ -10,6 +10,12 @@ import moment from 'moment';
 import config from '../config/config';
 import userActivityService from './userActivity.service';
 import deviceService from './device.service';
+import { passwordSecurityService } from './index';
+import securityService from './security.service';
+import { SecurityEventType } from '@prisma/client';
+import catchAsync from '../utils/catchAsync';
+import { createEmailVerificationOtp } from './otp.service';
+import { sendEmailVerificationOtp } from '../services/email.service';
 
 /**
  * Login with username and password
@@ -130,15 +136,19 @@ const resetPassword = async (resetPasswordToken: string, newPassword: string, re
       resetPasswordToken,
       TokenType.RESET_PASSWORD
     );
-    const user = await userService.getUserById(resetPasswordTokenDoc.userId);
+    const user = (await userService.getUserById(resetPasswordTokenDoc.userId)) as any;
     if (!user) {
       throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
     }
 
-    const hashedPassword = await encryptPassword(newPassword);
-    await userService.updateUserById((user as any).id, {
-      password: hashedPassword,
-      passwordChangedAt: new Date(),
+    await passwordSecurityService.updatePassword(user.id, newPassword);
+    await securityService.logSecurityEvent({
+      userId: user.id,
+      ipAddress: req.ip || '',
+      userAgent: req.get('User-Agent') || 'Unknown',
+      eventType: SecurityEventType.PASSWORD_RESET_COMPLETED,
+      success: true,
+      details: { timestamp: new Date().toISOString() },
     });
 
     await tokenService.blacklistToken(resetPasswordTokenDoc.id);
@@ -183,7 +193,7 @@ const changePassword = async (
   newPassword: string,
   req: Request
 ) => {
-  const user = await userService.getUserById(userId);
+  const user = (await userService.getUserById(userId)) as any;
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
@@ -192,10 +202,14 @@ const changePassword = async (
     throw new ApiError(httpStatus.UNAUTHORIZED, 'Incorrect password');
   }
 
-  const hashedPassword = await encryptPassword(newPassword);
-  await userService.updateUserById(userId, {
-    password: hashedPassword,
-    passwordChangedAt: new Date(),
+  await passwordSecurityService.updatePassword(userId, newPassword);
+  await securityService.logSecurityEvent({
+    userId: userId,
+    ipAddress: req.ip || '',
+    userAgent: req.get('User-Agent') || 'Unknown',
+    eventType: SecurityEventType.PASSWORD_CHANGE,
+    success: true,
+    details: { timestamp: new Date().toISOString() },
   });
 };
 

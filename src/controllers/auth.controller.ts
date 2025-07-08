@@ -8,6 +8,7 @@ import userService from '../services/user.service';
 import { createEmailVerificationOtp } from '../services/otp.service';
 import { sendEmailVerificationOtp } from '../services/email.service';
 import deviceService from '../services/device.service';
+import { passwordSecurityService } from '../services';
 import { Request, Response } from 'express';
 
 /**
@@ -17,10 +18,13 @@ import { Request, Response } from 'express';
  */
 const register = catchAsync(async (req: Request, res: Response) => {
   const user = await userService.createUser(req.body);
-  console.log('[REGISTER] User created:', user.id, user.email);
+  // Fetch user from DB to get hashed password
+  const dbUser = (await userService.getUserById(user.id)) as any;
+  if (dbUser && dbUser.password) {
+    await passwordSecurityService.addPasswordToHistory(user.id, dbUser.password);
+  }
   // Generate OTP and send via email
   const otp = await createEmailVerificationOtp(user.id);
-  console.log('[REGISTER] OTP generated:', otp, 'for user:', user.id);
   await sendEmailVerificationOtp(user.email, otp, user.name || 'User');
   res.status(httpStatus.CREATED).send({ user });
 });
@@ -32,9 +36,7 @@ const register = catchAsync(async (req: Request, res: Response) => {
  */
 const login = catchAsync(async (req: Request, res: Response) => {
   const { email, password } = req.body;
-  console.log('[LOGIN] Attempt for:', email);
   const tokens = await authService.loginUserWithEmailAndPassword(email, password, req);
-  console.log('[LOGIN] Success for:', email, 'Tokens:', tokens);
   res.send({ tokens });
 });
 
