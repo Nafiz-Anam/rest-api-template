@@ -9,12 +9,16 @@ const enumerateErrorFormat = winston.format(info => {
 });
 
 const logger = winston.createLogger({
-  level: config.env === 'development' ? 'debug' : 'info',
+  level: 'debug', // Always enable debug for development
   format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss.SSS' }),
+    winston.format.errors({ stack: true }),
     enumerateErrorFormat(),
-    config.env === 'development' ? winston.format.colorize() : winston.format.uncolorize(),
+    winston.format.colorize(),
     winston.format.splat(),
-    winston.format.printf(({ level, message }) => `${level}: ${message}`)
+    winston.format.printf(({ timestamp, level, message, stack }) => {
+      return `${timestamp} [${level}]: ${message}${stack ? '\n' + stack : ''}`;
+    })
   ),
   transports: [
     new winston.transports.Console({

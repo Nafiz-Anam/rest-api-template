@@ -1,14 +1,12 @@
 import { PrismaClient, OtpType } from '@prisma/client';
 import moment from 'moment';
-import crypto from 'crypto';
-
-const prisma = new PrismaClient();
+import prisma from '../client';
 
 const OTP_LENGTH = 6;
 const OTP_EXPIRY_MINUTES = 10;
 
 function generateOtp(): string {
-  return crypto.randomInt(100000, 1000000).toString(); // 6-digit
+  return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit
 }
 
 export async function createEmailVerificationOtp(userId: string) {

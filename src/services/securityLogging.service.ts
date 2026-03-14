@@ -1,9 +1,8 @@
-import { PrismaClient, SecurityEventType } from '@prisma/client';
+import { SecurityEventType } from '@prisma/client';
+import prisma from '../client';
 import { Request } from 'express';
 import ApiError from '../utils/ApiError';
 import httpStatus from 'http-status';
-
-const prisma = new PrismaClient();
 
 export interface SecurityEventData {
   userId?: string;

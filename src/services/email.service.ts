@@ -319,6 +319,7 @@ export const verifySmtpConnection = async () => {
     logger.info('SMTP server is reachable and ready to send emails.');
   } catch (error) {
     logger.error('SMTP server is NOT reachable:', error);
+    // Don't re-throw - this is just a warning, not a critical error
   }
 };
 

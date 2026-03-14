@@ -1,9 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import prisma from '../client';
 import bcrypt from 'bcryptjs';
 import ApiError from '../utils/ApiError';
 import httpStatus from 'http-status';
-
-const prisma = new PrismaClient();
 
 const PASSWORD_HISTORY_LIMIT = 5;
 const PASSWORD_EXPIRY_DAYS = 90;

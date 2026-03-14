@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { Request, Response } from 'express';
 import config from '../config/config';
 
@@ -29,7 +29,9 @@ export const authLimiter = rateLimit({
   },
   keyGenerator: (req: Request) => {
     // Use IP + user agent for better rate limiting
-    return `${req.ip}-${req.get('User-Agent')}`;
+    const ipKey = ipKeyGenerator(req.ip || '127.0.0.1');
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    return `${ipKey}-${userAgent}`;
   },
   skip: (req: Request) => {
     // Skip rate limiting for health checks and internal requests
@@ -55,7 +57,9 @@ export const passwordResetLimiter = rateLimit({
     });
   },
   keyGenerator: (req: Request) => {
-    return `${req.ip}-${req.get('User-Agent')}`;
+    const ipKey = ipKeyGenerator(req.ip || '127.0.0.1');
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    return `${ipKey}-${userAgent}`;
   },
 });
 
@@ -78,7 +82,7 @@ export const apiLimiter = rateLimit({
   },
   keyGenerator: (req: Request) => {
     // Use IP for general API limiting
-    return req.ip;
+    return ipKeyGenerator(req.ip || '127.0.0.1');
   },
   skip: (req: Request) => {
     // Skip rate limiting for health checks, docs, and internal requests
@@ -108,7 +112,9 @@ export const registrationLimiter = rateLimit({
     });
   },
   keyGenerator: (req: Request) => {
-    return `${req.ip}-${req.get('User-Agent')}`;
+    const ipKey = ipKeyGenerator(req.ip || '127.0.0.1');
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    return `${ipKey}-${userAgent}`;
   },
 });
 
@@ -132,6 +138,9 @@ export const sensitiveOperationLimiter = rateLimit({
   keyGenerator: (req: Request) => {
     // Use authenticated user ID if available, otherwise IP
     const authReq = req as AuthenticatedRequest;
-    return authReq.user?.id?.toString() || req.ip;
+    if (authReq.user?.id) {
+      return authReq.user.id.toString();
+    }
+    return ipKeyGenerator(req.ip || '127.0.0.1');
   },
 });

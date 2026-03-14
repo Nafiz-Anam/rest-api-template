@@ -4,13 +4,23 @@ import prisma from './client';
 import config from './config/config';
 import logger from './config/logger';
 
+logger.debug('Starting application initialization...');
+
 let server: Server;
-prisma.$connect().then(() => {
-  logger.info('Connected to SQL Database');
-  server = app.listen(config.port, () => {
-    logger.info(`Listening to port ${config.port}`);
+prisma
+  .$connect()
+  .then(() => {
+    logger.info('Connected to SQL Database');
+    logger.debug('Attempting to start HTTP server...');
+    server = app.listen(config.port, () => {
+      logger.info(`Listening to port ${config.port}`);
+      logger.debug('Server started successfully');
+    });
+  })
+  .catch(error => {
+    logger.error('Failed to connect to database:', error);
+    process.exit(1);
   });
-});
 
 const exitHandler = () => {
   if (server) {
@@ -25,6 +35,18 @@ const exitHandler = () => {
 
 const unexpectedErrorHandler = (error: unknown) => {
   logger.error(error);
+  // Only exit on critical errors, not on SMTP or non-critical issues
+  if (
+    error instanceof Error &&
+    (error.message.includes('ECONNREFUSED') ||
+      error.message.includes('ENOTFOUND') ||
+      error.message.includes('SMTP') ||
+      error.message.includes('email'))
+  ) {
+    // Don't exit on SMTP/email related errors
+    logger.warn('Non-critical error detected, server will continue running');
+    return;
+  }
   exitHandler();
 };
 

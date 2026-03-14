@@ -1,9 +1,6 @@
-import { PrismaClient, ActivityType } from '@prisma/client';
+import { ActivityType } from '@prisma/client';
 import { Request } from 'express';
-import ApiError from '../utils/ApiError';
-import httpStatus from 'http-status';
-
-const prisma = new PrismaClient();
+import prisma from '../client';
 
 export interface ActivityData {
   userId: string;

@@ -1,10 +1,9 @@
 import { Request } from 'express';
-import { PrismaClient, NotificationType } from '@prisma/client';
+import { NotificationType } from '@prisma/client';
+import prisma from '../client';
 import emailService from './email.service';
 import ApiError from '../utils/ApiError';
 import httpStatus from 'http-status';
-
-const prisma = new PrismaClient();
 
 /**
  * Create a new notification

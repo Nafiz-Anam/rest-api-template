@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "description": "REST API Boilerplate with Node JS, TypeScript, Express and Prisma",
   "main": "src/index.ts",
-  "type": "module",
   "repository": "https://github.com/antonio-lazaro/prisma-express-typescript-boilerplate.git",
   "scripts": {
     "start": "yarn build && pm2 start ecosystem.config.json --no-daemon",
-    "dev": "cross-env NODE_ENV=development nodemon",
+    "dev": "nodemon",
     "test": "docker-compose -f docker-compose.only-db-test.yml up -d && yarn db:push && jest -i --colors --verbose --detectOpenHandles && docker-compose -f docker-compose.only-db-test.yml down",
     "test:watch": "docker-compose -f docker-compose.only-db-test.yml up -d && yarn db:push && jest -i --watchAll && docker-compose -f docker-compose.only-db-test.yml down",
     "lint": "eslint .",
@@ -70,6 +69,7 @@
     "@types/node": "^25.5.0",
     "@types/passport": "^1.0.17",
     "@types/passport-jwt": "^4.0.1",
+    "@types/pg": "^8.18.0",
     "@types/qrcode": "^1.5.6",
     "@types/speakeasy": "^2.0.10",
     "@types/supertest": "^7.2.0",
@@ -100,7 +100,9 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "@prisma/extension-accelerate": "^3.0.1",
     "@types/multer": "^2.1.0",
     "@types/nodemailer": "^7.0.11",
     "bcryptjs": "^3.0.3",
@@ -119,6 +121,7 @@
     "nodemailer": "^8.0.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "pg": "^8.20.0",
     "pm2": "^6.0.14",
     "qrcode": "^1.5.4",
     "speakeasy": "^2.0.0",

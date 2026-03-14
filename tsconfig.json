@@ -2,8 +2,8 @@
   "compilerOptions": {
     "target": "ES2022",
     "outDir": "./build",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "lib": ["ES2022"],
     "types": ["node"],
     "resolveJsonModule": true,
