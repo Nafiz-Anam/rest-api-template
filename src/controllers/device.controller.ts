@@ -34,7 +34,7 @@ const getDeviceSessions = catchAsync(async (req: Request, res: Response) => {
  */
 const trustDevice = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as User;
-  const device = await deviceService.trustDevice(user.id, req.params.deviceId);
+  const device = await deviceService.trustDevice(user.id, req.params.deviceId as string);
   res.status(httpStatus.OK).send(device);
 });
 
@@ -45,7 +45,7 @@ const trustDevice = catchAsync(async (req: Request, res: Response) => {
  */
 const removeDevice = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as User;
-  await deviceService.removeDevice(user.id, req.params.deviceId);
+  await deviceService.removeDevice(user.id, req.params.deviceId as string);
   res.status(httpStatus.NO_CONTENT).send();
 });
 

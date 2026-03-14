@@ -7,7 +7,7 @@ const password = 'password1';
 const salt = bcrypt.genSaltSync(8);
 
 export const userOne = {
-  name: faker.name.fullName(),
+  name: faker.person.fullName(),
   email: faker.internet.email().toLowerCase(),
   password,
   role: Role.USER,
@@ -15,7 +15,7 @@ export const userOne = {
 };
 
 export const userTwo = {
-  name: faker.name.fullName(),
+  name: faker.person.fullName(),
   email: faker.internet.email().toLowerCase(),
   password,
   role: Role.USER,
@@ -23,7 +23,7 @@ export const userTwo = {
 };
 
 export const admin = {
-  name: faker.name.fullName(),
+  name: faker.person.fullName(),
   email: faker.internet.email().toLowerCase(),
   password,
   role: Role.ADMIN,

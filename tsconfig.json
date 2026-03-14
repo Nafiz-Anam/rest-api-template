@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2022",
     "outDir": "./build",
-    "module": "commonjs",
-    "lib": ["ES2020"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
     "types": ["node"],
     "resolveJsonModule": true,
     "esModuleInterop": true,
@@ -12,7 +13,6 @@
     "strict": false,
     "skipLibCheck": true,
     "strictNullChecks": false,
-    "moduleResolution": "node",
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false,

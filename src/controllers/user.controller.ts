@@ -40,7 +40,7 @@ const getUsers = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const getUser = catchAsync(async (req: Request, res: Response) => {
-  const user = await userService.getUserById(req.params.userId);
+  const user = await userService.getUserById(req.params.userId as string);
   if (!user) {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
@@ -53,7 +53,7 @@ const getUser = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const updateUser = catchAsync(async (req: Request, res: Response) => {
-  const user = await userService.updateUserById(req.params.userId, req.body);
+  const user = await userService.updateUserById(req.params.userId as string, req.body);
   res.send(user);
 });
 
@@ -63,7 +63,7 @@ const updateUser = catchAsync(async (req: Request, res: Response) => {
  * @access Private (Admin only)
  */
 const deleteUser = catchAsync(async (req: Request, res: Response) => {
-  await userService.deleteUserById(req.params.userId);
+  await userService.deleteUserById(req.params.userId as string);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
@@ -73,7 +73,7 @@ const deleteUser = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const getUserProfile = catchAsync(async (req: Request, res: Response) => {
-  const profile = await userService.getUserProfile(req.params.userId);
+  const profile = await userService.getUserProfile(req.params.userId as string);
   res.status(httpStatus.OK).send(profile);
 });
 
@@ -83,7 +83,7 @@ const getUserProfile = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const updateUserProfile = catchAsync(async (req: Request, res: Response) => {
-  const profile = await profileService.updateProfile(req.params.userId, req.body);
+  const profile = await profileService.updateProfile(req.params.userId as string, req.body);
   res.send(profile);
 });
 
@@ -93,7 +93,7 @@ const updateUserProfile = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const getUserPreferences = catchAsync(async (req: Request, res: Response) => {
-  const preferences = await profileService.getUserPreferences(req.params.userId);
+  const preferences = await profileService.getUserPreferences(req.params.userId as string);
   res.send(preferences);
 });
 
@@ -103,7 +103,7 @@ const getUserPreferences = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const updateUserPreferences = catchAsync(async (req: Request, res: Response) => {
-  const preferences = await profileService.updatePreferences(req.params.userId, req.body);
+  const preferences = await profileService.updatePreferences(req.params.userId as string, req.body);
   res.send(preferences);
 });
 
@@ -113,7 +113,7 @@ const updateUserPreferences = catchAsync(async (req: Request, res: Response) => 
  * @access Private
  */
 const getPrivacySettings = catchAsync(async (req: Request, res: Response) => {
-  const privacy = await profileService.getUserPreferences(req.params.userId);
+  const privacy = await profileService.getUserPreferences(req.params.userId as string);
   res.send(privacy);
 });
 
@@ -123,7 +123,7 @@ const getPrivacySettings = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const updatePrivacySettings = catchAsync(async (req: Request, res: Response) => {
-  const privacy = await profileService.updatePrivacySettings(req.params.userId, req.body);
+  const privacy = await profileService.updatePrivacySettings(req.params.userId as string, req.body);
   res.send(privacy);
 });
 
@@ -133,7 +133,7 @@ const updatePrivacySettings = catchAsync(async (req: Request, res: Response) => 
  * @access Private
  */
 const getAccountStatus = catchAsync(async (req: Request, res: Response) => {
-  const status = await profileService.getUserProfile(req.params.userId);
+  const status = await profileService.getUserProfile(req.params.userId as string);
   res.send(status);
 });
 
@@ -144,7 +144,7 @@ const getAccountStatus = catchAsync(async (req: Request, res: Response) => {
  */
 const getUserStats = catchAsync(async (req: Request, res: Response) => {
   // For now, return basic user info as stats
-  const user = await profileService.getUserProfile(req.params.userId);
+  const user = await profileService.getUserProfile(req.params.userId as string);
   const stats = {
     id: user.id,
     email: user.email,
@@ -164,7 +164,10 @@ const getUserStats = catchAsync(async (req: Request, res: Response) => {
  */
 const getUserActivity = catchAsync(async (req: Request, res: Response) => {
   const options = pick(req.query, ['page', 'limit', 'type', 'startDate', 'endDate']);
-  const activity = await userActivityService.getUserActivities(req.params.userId, options);
+  const activity = await userActivityService.getUserActivities(
+    req.params.userId as string,
+    options
+  );
   res.send(activity);
 });
 
@@ -175,7 +178,7 @@ const getUserActivity = catchAsync(async (req: Request, res: Response) => {
  */
 const getActivityStats = catchAsync(async (req: Request, res: Response) => {
   const days = req.query.days ? parseInt(req.query.days as string) : 30;
-  const stats = await userActivityService.getActivityStats(req.params.userId, days);
+  const stats = await userActivityService.getActivityStats(req.params.userId as string, days);
   res.send(stats);
 });
 
@@ -185,7 +188,7 @@ const getActivityStats = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const getUserDevices = catchAsync(async (req: Request, res: Response) => {
-  const devices = await deviceService.getUserDevices(req.params.userId);
+  const devices = await deviceService.getUserDevices(req.params.userId as string);
   res.send(devices);
 });
 
@@ -195,7 +198,7 @@ const getUserDevices = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const getDeviceSessions = catchAsync(async (req: Request, res: Response) => {
-  const sessions = await deviceService.getDeviceSessions(req.params.userId);
+  const sessions = await deviceService.getDeviceSessions(req.params.userId as string);
   res.send(sessions);
 });
 
@@ -205,7 +208,10 @@ const getDeviceSessions = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const trustDevice = catchAsync(async (req: Request, res: Response) => {
-  const device = await deviceService.trustDevice(req.params.userId, req.params.deviceId);
+  const device = await deviceService.trustDevice(
+    req.params.userId as string,
+    req.params.deviceId as string
+  );
   res.send(device);
 });
 
@@ -215,7 +221,7 @@ const trustDevice = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const removeDevice = catchAsync(async (req: Request, res: Response) => {
-  await deviceService.removeDevice(req.params.userId, req.params.deviceId);
+  await deviceService.removeDevice(req.params.userId as string, req.params.deviceId as string);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
@@ -227,7 +233,7 @@ const removeDevice = catchAsync(async (req: Request, res: Response) => {
 const removeAllOtherDevices = catchAsync(async (req: Request, res: Response) => {
   const { currentDeviceId } = req.body;
   const removedCount = await deviceService.removeAllOtherDevices(
-    req.params.userId,
+    req.params.userId as string,
     currentDeviceId
   );
   res.send({ removedCount });
@@ -240,7 +246,10 @@ const removeAllOtherDevices = catchAsync(async (req: Request, res: Response) => 
  */
 const getUserNotifications = catchAsync(async (req: Request, res: Response) => {
   const options = pick(req.query, ['page', 'limit', 'type', 'isRead']);
-  const notifications = await notificationService.getUserNotifications(req.params.userId, options);
+  const notifications = await notificationService.getUserNotifications(
+    req.params.userId as string,
+    options
+  );
   res.send(notifications);
 });
 
@@ -251,8 +260,8 @@ const getUserNotifications = catchAsync(async (req: Request, res: Response) => {
  */
 const markNotificationAsRead = catchAsync(async (req: Request, res: Response) => {
   const notification = await notificationService.markAsRead(
-    req.params.userId,
-    req.params.notificationId
+    req.params.userId as string,
+    req.params.notificationId as string
   );
   res.send(notification);
 });
@@ -263,7 +272,7 @@ const markNotificationAsRead = catchAsync(async (req: Request, res: Response) =>
  * @access Private
  */
 const markAllNotificationsAsRead = catchAsync(async (req: Request, res: Response) => {
-  const count = await notificationService.markAllAsRead(req.params.userId);
+  const count = await notificationService.markAllAsRead(req.params.userId as string);
   res.send({ count });
 });
 
@@ -273,7 +282,10 @@ const markAllNotificationsAsRead = catchAsync(async (req: Request, res: Response
  * @access Private
  */
 const deleteNotification = catchAsync(async (req: Request, res: Response) => {
-  await notificationService.deleteNotification(req.params.userId, req.params.notificationId);
+  await notificationService.deleteNotification(
+    req.params.userId as string,
+    req.params.notificationId as string
+  );
   res.status(httpStatus.NO_CONTENT).send();
 });
 
@@ -283,7 +295,7 @@ const deleteNotification = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const deleteReadNotifications = catchAsync(async (req: Request, res: Response) => {
-  const count = await notificationService.deleteReadNotifications(req.params.userId);
+  const count = await notificationService.deleteReadNotifications(req.params.userId as string);
   res.send({ count });
 });
 
@@ -293,7 +305,7 @@ const deleteReadNotifications = catchAsync(async (req: Request, res: Response) =
  * @access Private
  */
 const getNotificationStats = catchAsync(async (req: Request, res: Response) => {
-  const stats = await notificationService.getNotificationStats(req.params.userId);
+  const stats = await notificationService.getNotificationStats(req.params.userId as string);
   res.send(stats);
 });
 
@@ -304,7 +316,10 @@ const getNotificationStats = catchAsync(async (req: Request, res: Response) => {
  */
 const getSecurityLogs = catchAsync(async (req: Request, res: Response) => {
   const options = pick(req.query, ['page', 'limit', 'eventType', 'level', 'startDate', 'endDate']);
-  const logs = await securityLoggingService.getUserSecurityLogs(req.params.userId, options);
+  const logs = await securityLoggingService.getUserSecurityLogs(
+    req.params.userId as string,
+    options
+  );
   res.send(logs);
 });
 
@@ -315,7 +330,7 @@ const getSecurityLogs = catchAsync(async (req: Request, res: Response) => {
  */
 const getSecurityStats = catchAsync(async (req: Request, res: Response) => {
   const days = req.query.days ? parseInt(req.query.days as string) : 30;
-  const stats = await securityLoggingService.getSecurityStats(req.params.userId, days);
+  const stats = await securityLoggingService.getSecurityStats(req.params.userId as string, days);
   res.send(stats);
 });
 
@@ -325,7 +340,7 @@ const getSecurityStats = catchAsync(async (req: Request, res: Response) => {
  * @access Public
  */
 const getPublicProfile = catchAsync(async (req: Request, res: Response) => {
-  const profile = await userService.getUserById(req.params.userId);
+  const profile = await userService.getUserById(req.params.userId as string);
   res.send(profile);
 });
 
@@ -336,7 +351,7 @@ const getPublicProfile = catchAsync(async (req: Request, res: Response) => {
  */
 const exportUserData = catchAsync(async (req: Request, res: Response) => {
   // For now, return user profile as exported data
-  const data = await profileService.getUserProfile(req.params.userId);
+  const data = await profileService.getUserProfile(req.params.userId as string);
   res.send(data);
 });
 
@@ -346,7 +361,7 @@ const exportUserData = catchAsync(async (req: Request, res: Response) => {
  * @access Private
  */
 const deleteAccount = catchAsync(async (req: Request, res: Response) => {
-  await profileService.deleteAccount(req.params.userId, req.body.password);
+  await profileService.deleteAccount(req.params.userId as string, req.body.password);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
@@ -392,7 +407,7 @@ const getLockedUsers = catchAsync(async (req: Request, res: Response) => {
  * @access Private (Admin only)
  */
 const unlockUserAccount = catchAsync(async (req: Request, res: Response) => {
-  const user = await userService.unlockUserAccount(req.params.userId);
+  const user = await userService.unlockUserAccount(req.params.userId as string);
   res.send(user);
 });
 
@@ -402,7 +417,7 @@ const unlockUserAccount = catchAsync(async (req: Request, res: Response) => {
  * @access Private (Admin only)
  */
 const forcePasswordChange = catchAsync(async (req: Request, res: Response) => {
-  const user = await userService.forcePasswordChange(req.params.userId);
+  const user = await userService.forcePasswordChange(req.params.userId as string);
   res.send(user);
 });
 
