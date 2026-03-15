@@ -111,17 +111,17 @@ const verifyEmailOtp = {
 };
 
 const resetPasswordWithOtp = {
-  body: Joi.object().keys({
-    email: Joi.string().email().required(),
-    otp: Joi.string().length(6).required(),
-    password: Joi.string().required().custom(password),
+  body: z.object({
+    email: z.string().email({ message: 'Invalid email format' }),
+    otp: z.string().length(6, { message: 'OTP must be exactly 6 characters' }),
+    password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
   }),
 };
 
 const verifyResetOtp = {
-  body: Joi.object().keys({
-    email: Joi.string().email().required(),
-    otp: Joi.string().length(6).required(),
+  body: z.object({
+    email: z.string().email({ message: 'Invalid email format' }),
+    otp: z.string().length(6, { message: 'OTP must be exactly 6 characters' }),
   }),
 };
 

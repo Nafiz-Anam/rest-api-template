@@ -68,15 +68,15 @@ async function parseValidationFiles(spec) {
       const schemaName = match ? match[1] : null;
 
       if (schemaName) {
-        // Extract Joi schemas using regex
-        const schemaMatches = content.match(/const\s+(\w+)\s*=\s*Joi\.object\(/g);
+        // Extract Zod schemas using regex
+        const schemaMatches = content.match(/const\s+(\w+)\s*=\s*z\.object\(/g);
 
         if (schemaMatches) {
           for (const match of schemaMatches) {
             const name = match.match(/const\s+(\w+)\s*=/)?.[1];
             if (name === schemaName) {
               // Generate basic schema from field names
-              const fields = extractFieldsFromJoi(content, schemaName);
+              const fields = extractFieldsFromZod(content, schemaName);
               if (fields.length > 0) {
                 spec.components.schemas[schemaName] = {
                   type: 'object',
@@ -87,11 +87,11 @@ async function parseValidationFiles(spec) {
                 fields.forEach(field => {
                   spec.components.schemas[schemaName].properties[field] = {
                     type: 'string',
-                    example: generateExample(field),
+                    example: `example-${field}`,
                   };
 
                   // Check if field is required
-                  if (content.includes(`${field}: Joi.string().required()`)) {
+                  if (content.includes(`${field}: z.string().min(1)`)) {
                     spec.components.schemas[schemaName].required.push(field);
                   }
                 });
@@ -106,12 +106,12 @@ async function parseValidationFiles(spec) {
   }
 }
 
-function extractFieldsFromJoi(content) {
+function extractFieldsFromZod(content) {
   const fields = [];
   const lines = content.split('\n');
 
   for (const line of lines) {
-    const fieldMatch = line.match(/(\w+):\s*Joi\./);
+    const fieldMatch = line.match(/(\w+):\s*z\./);
     if (fieldMatch) {
       fields.push(fieldMatch[1]);
     }

@@ -76,7 +76,7 @@ async function generateSchemasFromValidation(spec: any) {
       const fileName = path.basename(file, '.validation.ts');
 
       // Extract validation schemas (this is a simplified approach)
-      // In a real implementation, you'd parse the Joi schemas more thoroughly
+      // In a real implementation, you'd parse the Zod schemas more thoroughly
       if (content.includes('register')) {
         spec.components.schemas.RegisterRequest = {
           type: 'object',

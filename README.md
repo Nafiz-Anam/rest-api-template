@@ -53,7 +53,7 @@ cp .env.example .env
 
 - **SQL database**: [PostgreSQL](https://www.postgresql.org) object data modeling using [Prisma](https://www.prisma.io) ORM
 - **Authentication and authorization**: using [passport](http://www.passportjs.org)
-- **Validation**: request data validation using [Joi](https://joi.dev)
+- **Validation**: request data validation using [Zod](https://zod.dev)
 - **Logging**: using [winston](https://github.com/winstonjs/winston) and [morgan](https://github.com/expressjs/morgan)
 - `future` **Testing**: unit and integration tests using [Jest](https://jestjs.io)
 - **Error handling**: centralized error handling mechanism
@@ -321,7 +321,7 @@ const getUser = async userId => {
 
 ## Validation
 
-Request data is validated using [Joi](https://joi.dev/). Check the [documentation](https://joi.dev/api/) for more details on how to write Joi validation schemas.
+Request data is validated using [Zod](https://zod.dev/). Check the [documentation](https://zod.dev/) for more details on how to write Zod validation schemas.
 
 The validation schemas are defined in the `src/validations` directory and are used in the routes by providing them as parameters to the `validate` middleware.
 

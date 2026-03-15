@@ -3,7 +3,7 @@ import path from 'path';
 import { glob } from 'glob';
 import { name, version, description } from '../package.json';
 
-// Advanced auto-generator that reads Joi schemas and TypeScript types
+// Advanced auto-generator that reads Zod validation schemas and TypeScript types
 async function generateAdvancedOpenAPISpec() {
   const openAPISpec = {
     openapi: '3.0.0',
@@ -42,8 +42,8 @@ async function generateAdvancedOpenAPISpec() {
     security: [{ bearerAuth: [] }],
   };
 
-  // Parse Joi validation schemas
-  await parseJoiSchemas(openAPISpec);
+  // Parse Zod validation schemas
+  await parseZodSchemas(openAPISpec);
 
   // Parse route files and extract endpoints
   await parseRouteFiles(openAPISpec);
@@ -54,7 +54,7 @@ async function generateAdvancedOpenAPISpec() {
   return openAPISpec;
 }
 
-async function parseJoiSchemas(spec: any) {
+async function parseZodSchemas(spec: any) {
   try {
     const validationFiles = await glob('src/validations/*.validation.ts');
 
@@ -62,20 +62,19 @@ async function parseJoiSchemas(spec: any) {
       const content = fs.readFileSync(file, 'utf-8');
       const fileName = path.basename(file, '.validation.ts');
 
-      // Parse Joi schemas using regex patterns
-      const schemaMatches = content.match(/const\s+(\w+)\s*=\s*Joi\.object\(/g);
+      // Parse Zod schemas using regex patterns
+      const schemaMatches = content.match(/const\s+(\w+)\s*=\s*z\.object\(/g);
 
       if (schemaMatches) {
         for (const match of schemaMatches) {
           const schemaName = match.match(/const\s+(\w+)\s*=/)?.[1];
           if (schemaName) {
-            // Extract the schema definition
             const schemaStart = content.indexOf(match);
             const schemaEnd = findClosingBrace(content, schemaStart + match.length);
             const schemaDefinition = content.substring(schemaStart, schemaEnd);
 
-            // Convert Joi schema to OpenAPI schema
-            const openAPISchema = convertJoiToOpenAPI(schemaDefinition, schemaName);
+            // Convert Zod schema to OpenAPI schema
+            const openAPISchema = convertZodToOpenAPI(schemaDefinition, schemaName);
             if (openAPISchema) {
               spec.components.schemas[schemaName] = openAPISchema;
             }
@@ -84,34 +83,34 @@ async function parseJoiSchemas(spec: any) {
       }
     }
   } catch (error) {
-    console.warn('Warning: Could not parse Joi schemas:', error);
+    console.warn('Warning: Could not parse Zod schemas:', error);
   }
 }
 
-function convertJoiToOpenAPI(joiSchema: string, schemaName: string) {
+function convertZodToOpenAPI(zodSchema: string, schemaName: string) {
   const schema: any = {
     type: 'object',
     properties: {},
     required: [],
   };
 
-  // Parse Joi field definitions
-  const fieldMatches = joiSchema.match(/(\w+):\s*Joi\.([^(]+)\(/g);
+  // Parse Zod field definitions
+  const fieldMatches = zodSchema.match(/(\w+):\s*z\.([^(]+)\(/g);
 
   if (fieldMatches) {
     for (const match of fieldMatches) {
-      const fieldMatch = match.match(/(\w+):\s*Joi\.([^(]+)\(/);
+      const fieldMatch = match.match(/(\w+):\s*z\.([^(]+)\(/);
       if (fieldMatch) {
         const fieldName = fieldMatch[1];
-        const joiType = fieldMatch[2];
+        const zodType = fieldMatch[2];
 
-        // Convert Joi types to OpenAPI types
-        const openAPIType = convertJoiTypeToOpenAPI(joiType, joiSchema, fieldName);
+        // Convert Zod types to OpenAPI types
+        const openAPIType = convertZodTypeToOpenAPI(zodType, zodSchema, fieldName);
         if (openAPIType) {
           schema.properties[fieldName] = openAPIType;
 
           // Check if field is required
-          if (joiSchema.includes(`${fieldName}: Joi.${joiType}().required()`)) {
+          if (zodSchema.includes(`${fieldName}: z.${zodType}().min(1)`)) {
             schema.required.push(fieldName);
           }
         }
@@ -122,43 +121,38 @@ function convertJoiToOpenAPI(joiSchema: string, schemaName: string) {
   return Object.keys(schema.properties).length > 0 ? schema : null;
 }
 
-function convertJoiTypeToOpenAPI(joiType: string, fullSchema: string, fieldName: string) {
+function convertZodTypeToOpenAPI(zodType: string, fullSchema: string, fieldName: string) {
   const baseType: any = {
     type: 'string', // default
   };
 
-  switch (joiType.toLowerCase()) {
+  switch (zodType.toLowerCase()) {
     case 'string':
       baseType.type = 'string';
-      if (fullSchema.includes(`${fieldName}: Joi.string().email()`)) {
+      if (fullSchema.includes(`${fieldName}: z.string().email()`)) {
         baseType.format = 'email';
       }
-      if (fullSchema.includes(`${fieldName}: Joi.string().min(`)) {
+      if (fullSchema.includes(`${fieldName}: z.string().min(`)) {
         const minMatch = fullSchema.match(
-          new RegExp(`${fieldName}: Joi\\.string\\(\\)\\.min\\((\\d+)\\)`)
+          new RegExp(`${fieldName}: z\\.string\\(\\)\\.min\\((\\d+)\\)`)
         );
         if (minMatch) {
           baseType.minLength = parseInt(minMatch[1]);
         }
       }
       break;
-
     case 'number':
       baseType.type = 'number';
       break;
-
     case 'boolean':
       baseType.type = 'boolean';
       break;
-
     case 'array':
       baseType.type = 'array';
-      baseType.items = { type: 'string' }; // default
+      baseType.items = { type: 'string' };
       break;
-
-    case 'object':
-      baseType.type = 'object';
-      break;
+    default:
+      baseType.type = 'string';
   }
 
   // Add examples based on field name

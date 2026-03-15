@@ -49,7 +49,6 @@
     "es9",
     "docker",
     "passport",
-    "joi",
     "eslint",
     "prettier"
   ],
