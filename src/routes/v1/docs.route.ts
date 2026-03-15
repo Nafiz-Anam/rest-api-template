@@ -2,6 +2,8 @@ import express from 'express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDefinition from '../../docs/swaggerDef';
+import auth from '../../middlewares/auth';
+import config from '../../config/config';
 
 const router = express.Router();
 
@@ -32,6 +34,11 @@ const swaggerUiOptions = {
     },
   },
 };
+
+// Protect docs in production with authentication
+if (config.env === 'production') {
+  router.use(auth('manageUsers'));
+}
 
 router.use('/', swaggerUi.serve);
 router.get('/', swaggerUi.setup(specs, swaggerUiOptions));

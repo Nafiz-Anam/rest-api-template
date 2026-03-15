@@ -1,35 +1,31 @@
-import Joi from 'joi';
+import { z } from 'zod';
 
-const envVarsSchema = Joi.object()
-  .keys({
-    NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
-    PORT: Joi.number().default(3000),
-    DATABASE_URL: Joi.string().required().description('PostgreSQL database URL'),
-    JWT_SECRET: Joi.string().required().description('JWT secret key'),
-    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number()
-      .default(30)
-      .description('minutes after which an access token expires'),
-    JWT_REFRESH_EXPIRATION_DAYS: Joi.number()
-      .default(30)
-      .description('days after which a refresh token expires'),
-    SMTP_HOST: Joi.string().description('server that will send the emails'),
-    SMTP_PORT: Joi.number().description('port to connect to the email server'),
-    SMTP_USERNAME: Joi.string().description('username for email server'),
-    SMTP_PASSWORD: Joi.string().description('password for email server'),
-    EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
-    ALLOWED_ORIGINS: Joi.string().description('comma-separated list of allowed CORS origins'),
-  })
-  .unknown();
+const envVarsSchema = z.object({
+  NODE_ENV: z.enum(['production', 'development', 'test']),
+  PORT: z.number().default(3000),
+  DATABASE_URL: z.string(),
+  JWT_SECRET: z.string(),
+  JWT_ACCESS_EXPIRATION_MINUTES: z.number().default(30),
+  JWT_REFRESH_EXPIRATION_DAYS: z.number().default(30),
+  SMTP_HOST: z.string(),
+  SMTP_PORT: z.number(),
+  SMTP_USERNAME: z.string(),
+  SMTP_PASSWORD: z.string(),
+  EMAIL_FROM: z.string(),
+  ALLOWED_ORIGINS: z.string(),
+});
 
-const { value: envVars, error } = envVarsSchema
-  .prefs({ errors: { label: 'key' } })
-  .validate(process.env);
+let envVars: z.infer<typeof envVarsSchema>;
 
-if (error) {
-  throw new Error(`Config validation error: ${error.message}`);
+try {
+  envVars = envVarsSchema.parse(process.env);
+} catch (error) {
+  throw new Error(
+    `Config validation error: ${error instanceof z.ZodError ? error.issues[0]?.message : error.message}`
+  );
 }
 
-export default {
+const config = {
   env: envVars.NODE_ENV,
   port: envVars.PORT,
   database: {
@@ -55,3 +51,5 @@ export default {
     origins: envVars.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
   },
 };
+
+export default config;

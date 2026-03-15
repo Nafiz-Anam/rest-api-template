@@ -8,7 +8,7 @@ function getSwaggerDefinition() {
   try {
     // Read the swagger definition file and extract the export
     const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
-    
+
     return {
       openapi: '3.0.0',
       info: {
@@ -23,7 +23,7 @@ function getSwaggerDefinition() {
       },
       servers: [
         {
-          url: 'http://localhost:3000/v1',
+          url: 'http://localhost:8000/v1',
           description: 'Development server',
         },
       ],
@@ -51,15 +51,15 @@ function getSwaggerDefinition() {
 
 try {
   console.log('🔍 Validating API documentation...');
-  
+
   const swaggerDefinition = getSwaggerDefinition();
-  
+
   const specs = swaggerJsdoc({
     definition: swaggerDefinition,
     apis: ['src/docs/*.yml', 'src/routes/v1/*.ts', 'src/controllers/*.ts'],
     failOnErrors: true,
   });
-  
+
   console.log('✅ API documentation is valid!');
   console.log(`📊 Found ${Object.keys(specs.paths || {}).length} endpoints`);
   console.log(`📋 Found ${Object.keys(specs.components?.schemas || {}).length} schemas`);
@@ -67,4 +67,4 @@ try {
 } catch (error) {
   console.error('❌ API documentation validation failed:', error.message);
   process.exit(1);
-} 
+}

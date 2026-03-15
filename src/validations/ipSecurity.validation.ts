@@ -1,72 +1,49 @@
-import Joi from 'joi';
-import { IPSecurityRuleType } from '@prisma/client';
+import { z } from 'zod';
+import { IPSecurityRuleType } from '../types/ipSecurity.types';
 
-const createIPRule = Joi.object({
-  ipAddress: Joi.string().ip().required().messages({
-    'string.ip': 'Invalid IP address format',
-    'any.required': 'IP address is required',
-  }),
-  cidrRange: Joi.string().ip().optional().messages({
-    'string.ip': 'Invalid CIDR range format',
-  }),
-  ruleType: Joi.string()
-    .valid(...Object.values(IPSecurityRuleType))
-    .required()
-    .messages({
-      'any.only': 'Invalid rule type. Must be WHITELIST, BLACKLIST, or SUSPICIOUS',
-      'any.required': 'Rule type is required',
+export const createIPRule = z.object({
+  ipAddress: z
+    .string()
+    .refine(val => /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/.test(val), {
+      message: 'Invalid IP address format',
     }),
-  reason: Joi.string().optional().max(500).messages({
-    'string.max': 'Reason cannot exceed 500 characters',
-  }),
+  cidrRange: z
+    .string()
+    .refine(val => /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}$/.test(val), {
+      message: 'Invalid CIDR range format',
+    })
+    .optional(),
+  ruleType: z.nativeEnum(IPSecurityRuleType),
+  reason: z.string().min(1, { message: 'Reason is required' }),
 });
 
-const updateIPRule = Joi.object({
-  ipAddress: Joi.string().ip().optional().messages({
-    'string.ip': 'Invalid IP address format',
-  }),
-  cidrRange: Joi.string().ip().optional().messages({
-    'string.ip': 'Invalid CIDR range format',
-  }),
-  ruleType: Joi.string()
-    .valid(...Object.values(IPSecurityRuleType))
-    .optional()
-    .messages({
-      'any.only': 'Invalid rule type. Must be WHITELIST, BLACKLIST, or SUSPICIOUS',
-    }),
-  reason: Joi.string().optional().max(500).messages({
-    'string.max': 'Reason cannot exceed 500 characters',
-  }),
-  isActive: Joi.boolean().optional().messages({
-    'boolean.base': 'isActive must be a boolean',
-  }),
+export const updateIPRule = z.object({
+  ipAddress: z
+    .string()
+    .refine(val => /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$/.test(val), {
+      message: 'Invalid IP address format',
+    })
+    .optional(),
+  cidrRange: z
+    .string()
+    .refine(val => /^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\/[0-9]{1,2}$/.test(val), {
+      message: 'Invalid CIDR range format',
+    })
+    .optional(),
+  ruleType: z.nativeEnum(IPSecurityRuleType).optional(),
+  reason: z.string().optional(),
+  isActive: z.boolean().optional(),
 });
 
-const getIPRules = Joi.object({
-  ruleType: Joi.string()
-    .valid(...Object.values(IPSecurityRuleType))
-    .optional()
-    .messages({
-      'any.only': 'Invalid rule type. Must be WHITELIST, BLACKLIST, or SUSPICIOUS',
-    }),
-  isActive: Joi.boolean().optional().messages({
-    'boolean.base': 'isActive must be a boolean',
-  }),
-  page: Joi.number().integer().min(1).default(1).messages({
-    'number.base': 'Page must be a number',
-    'number.integer': 'Page must be an integer',
-    'number.min': 'Page must be at least 1',
-  }),
-  limit: Joi.number().integer().min(1).max(100).default(50).messages({
-    'number.base': 'Limit must be a number',
-    'number.integer': 'Limit must be an integer',
-    'number.min': 'Limit must be at least 1',
-    'number.max': 'Limit cannot exceed 100',
-  }),
+export const getIPRules = z.object({
+  ruleType: z.nativeEnum(IPSecurityRuleType).optional(),
+  isActive: z.boolean().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
 });
 
 export const ipSecurityValidation = {
-  createIPRule,
-  updateIPRule,
-  getIPRules,
+  createIPRule: { body: createIPRule },
+  updateIPRule: { body: updateIPRule },
+  getIPRules: { query: getIPRules },
 };

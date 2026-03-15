@@ -1,302 +1,335 @@
 import { Role } from '@prisma/client';
-import Joi from 'joi';
+import { z } from 'zod';
 import { password } from './custom.validation';
 
 const createUser = {
-  body: Joi.object().keys({
-    email: Joi.string().required().email(),
-    password: Joi.string().required().custom(password),
-    name: Joi.string().required().min(1).max(100),
-    role: Joi.string().valid(Role.USER, Role.ADMIN).optional(),
+  body: z.object({
+    email: z.string().email({ message: 'Invalid email format' }),
+    password: z.string().min(8, { message: 'Password must be at least 8 characters' }),
+    name: z
+      .string()
+      .min(1, { message: 'Name is required' })
+      .max(100, { message: 'Name cannot exceed 100 characters' }),
+    role: z.enum([Role.USER, Role.ADMIN]).optional(),
   }),
 };
 
 const getUsers = {
-  query: Joi.object().keys({
-    name: Joi.string().optional(),
-    role: Joi.string().valid(Role.USER, Role.ADMIN).optional(),
-    isActive: Joi.boolean().optional(),
-    isEmailVerified: Joi.boolean().optional(),
-    sortBy: Joi.string().optional(),
-    limit: Joi.number().integer().min(1).max(100).optional(),
-    page: Joi.number().integer().min(1).optional(),
+  query: z.object({
+    name: z.string().optional(),
+    role: z.enum([Role.USER, Role.ADMIN]).optional(),
+    isActive: z.boolean().optional(),
+    isEmailVerified: z.boolean().optional(),
+    sortBy: z.string().optional(),
+    limit: z.coerce
+      .number()
+      .min(1, { message: 'Limit must be at least 1' })
+      .max(100, { message: 'Limit cannot exceed 100' })
+      .optional(),
+    page: z.coerce.number().min(1, { message: 'Page must be at least 1' }).optional(),
   }),
 };
 
 const getUser = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const updateUser = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  body: Joi.object()
-    .keys({
-      email: Joi.string().email().optional(),
-      password: Joi.string().custom(password).optional(),
-      name: Joi.string().min(1).max(100).optional(),
-      role: Joi.string().valid(Role.USER, Role.ADMIN).optional(),
-      isActive: Joi.boolean().optional(),
-      isEmailVerified: Joi.boolean().optional(),
-    })
-    .min(1),
+  body: z.object({
+    email: z.string().email({ message: 'Invalid email format' }).optional(),
+    password: z.string().min(8, { message: 'Password must be at least 8 characters' }).optional(),
+    name: z
+      .string()
+      .min(1, { message: 'Name is required' })
+      .max(100, { message: 'Name cannot exceed 100 characters' })
+      .optional(),
+    role: z.enum([Role.USER, Role.ADMIN]).optional(),
+    isActive: z.boolean().optional(),
+    isEmailVerified: z.boolean().optional(),
+  }),
 };
 
 const deleteUser = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 // Profile management
 const getUserProfile = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const updateUserProfile = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  body: Joi.object().keys({
-    name: Joi.string().min(1).max(100).optional(),
-    avatar: Joi.string().uri().optional(),
-    bio: Joi.string().max(500).optional(),
-    phone: Joi.string()
-      .pattern(/^\+?[\d\s\-()]+$/)
+  body: z.object({
+    name: z
+      .string()
+      .min(1, { message: 'Name must be at least 1 character' })
+      .max(100, { message: 'Name cannot exceed 100 characters' })
       .optional(),
-    dateOfBirth: Joi.date().max('now').optional(),
-    gender: Joi.string().valid('male', 'female', 'other', 'prefer_not_to_say').optional(),
-    location: Joi.string().max(200).optional(),
-    timezone: Joi.string().optional(),
-    language: Joi.string()
-      .valid('en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko')
+    avatar: z.string().url({ message: 'Avatar must be a valid URL' }).optional(),
+    bio: z.string().max(500, { message: 'Bio cannot exceed 500 characters' }).optional(),
+    phone: z
+      .string()
+      .regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone number format' })
       .optional(),
+    dateOfBirth: z
+      .date()
+      .max(new Date(), { message: 'Date of birth cannot be in future' })
+      .optional(),
+    gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
+    location: z.string().max(200, { message: 'Location cannot exceed 200 characters' }).optional(),
+    timezone: z.string().optional(),
+    language: z.enum(['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko']).optional(),
   }),
 };
 
 const getUserPreferences = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-};
-
-const updateUserPreferences = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
-  }),
-  body: Joi.object().keys({
-    emailNotifications: Joi.object()
-      .keys({
-        loginAlerts: Joi.boolean().optional(),
-        passwordChanges: Joi.boolean().optional(),
-        twoFactorChanges: Joi.boolean().optional(),
-        deviceLogins: Joi.boolean().optional(),
+  body: z.object({
+    emailNotifications: z
+      .object({
+        loginAlerts: z.boolean().optional(),
+        passwordChanges: z.boolean().optional(),
+        twoFactorChanges: z.boolean().optional(),
+        deviceLogins: z.boolean().optional(),
       })
       .optional(),
-    pushNotifications: Joi.object()
-      .keys({
-        loginAlerts: Joi.boolean().optional(),
-        securityUpdates: Joi.boolean().optional(),
+    pushNotifications: z
+      .object({
+        loginAlerts: z.boolean().optional(),
+        securityUpdates: z.boolean().optional(),
       })
       .optional(),
-    privacySettings: Joi.object()
-      .keys({
-        profileVisibility: Joi.string().valid('public', 'private', 'friends_only').optional(),
-        showEmail: Joi.boolean().optional(),
-        showLastSeen: Joi.boolean().optional(),
+    privacySettings: z
+      .object({
+        profileVisibility: z.enum(['public', 'private', 'friends_only']).optional(),
+        showEmail: z.boolean().optional(),
+        showLastSeen: z.boolean().optional(),
       })
       .optional(),
-    theme: Joi.string().valid('light', 'dark', 'auto').optional(),
-    language: Joi.string()
-      .valid('en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko')
-      .optional(),
-    timezone: Joi.string().optional(),
+    theme: z.enum(['light', 'dark', 'auto']).optional(),
+    language: z.enum(['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko']).optional(),
+    timezone: z.string().optional(),
   }),
 };
 
 const getPrivacySettings = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const updatePrivacySettings = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  body: Joi.object().keys({
-    profileVisibility: Joi.string().valid('public', 'private', 'friends_only').required(),
-    showEmail: Joi.boolean().optional(),
-    showLastSeen: Joi.boolean().optional(),
+  body: z.object({
+    profileVisibility: z.enum(['public', 'private', 'friends_only'], {
+      message: 'Profile visibility is required',
+    }),
+    showEmail: z.boolean().optional(),
+    showLastSeen: z.boolean().optional(),
   }),
 };
 
 const getAccountStatus = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const getUserStats = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 // Activity management
 const getUserActivity = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  query: Joi.object().keys({
-    page: Joi.number().integer().min(1).optional(),
-    limit: Joi.number().integer().min(1).max(100).optional(),
-    type: Joi.string().optional(),
-    startDate: Joi.date().optional(),
-    endDate: Joi.date().optional(),
+  query: z.object({
+    page: z.coerce.number().min(1, { message: 'Page must be at least 1' }).optional(),
+    limit: z.coerce
+      .number()
+      .min(1, { message: 'Limit must be at least 1' })
+      .max(100, { message: 'Limit cannot exceed 100' })
+      .optional(),
+    type: z.string().optional(),
+    startDate: z.date().optional(),
+    endDate: z.date().optional(),
   }),
 };
 
 const getActivityStats = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  query: Joi.object().keys({
-    days: Joi.number().integer().min(1).max(365).optional(),
+  query: z.object({
+    days: z.coerce
+      .number()
+      .min(1, { message: 'Days must be at least 1' })
+      .max(365, { message: 'Days cannot exceed 365' })
+      .optional(),
   }),
 };
 
 // Device management
 const getUserDevices = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const getDeviceSessions = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const trustDevice = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
-    deviceId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
+    deviceId: z.string().min(1, { message: 'Device ID is required' }),
   }),
 };
 
 const removeDevice = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
-    deviceId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
+    deviceId: z.string().min(1, { message: 'Device ID is required' }),
   }),
 };
 
 const removeAllOtherDevices = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  body: Joi.object().keys({
-    currentDeviceId: Joi.string().required(),
+  body: z.object({
+    currentDeviceId: z.string().min(1, { message: 'Current device ID is required' }),
   }),
 };
 
 // Notification management
 const getUserNotifications = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  query: Joi.object().keys({
-    page: Joi.number().integer().min(1).optional(),
-    limit: Joi.number().integer().min(1).max(100).optional(),
-    type: Joi.string().optional(),
-    isRead: Joi.boolean().optional(),
+  query: z.object({
+    page: z.coerce.number().min(1, { message: 'Page must be at least 1' }).optional(),
+    limit: z.coerce
+      .number()
+      .min(1, { message: 'Limit must be at least 1' })
+      .max(100, { message: 'Limit cannot exceed 100' })
+      .optional(),
+    type: z.string().optional(),
+    isRead: z.boolean().optional(),
   }),
 };
 
 const markNotificationAsRead = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
-    notificationId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
+    notificationId: z.string().min(1, { message: 'Notification ID is required' }),
   }),
 };
 
 const deleteNotification = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
-    notificationId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
+    notificationId: z.string().min(1, { message: 'Notification ID is required' }),
   }),
 };
 
 // Security logs
 const getSecurityLogs = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  query: Joi.object().keys({
-    page: Joi.number().integer().min(1).optional(),
-    limit: Joi.number().integer().min(1).max(100).optional(),
-    eventType: Joi.string().optional(),
-    level: Joi.string().valid('info', 'warning', 'error').optional(),
-    startDate: Joi.date().optional(),
-    endDate: Joi.date().optional(),
+  query: z.object({
+    page: z.coerce.number().min(1, { message: 'Page must be at least 1' }).optional(),
+    limit: z.coerce
+      .number()
+      .min(1, { message: 'Limit must be at least 1' })
+      .max(100, { message: 'Limit cannot exceed 100' })
+      .optional(),
+    eventType: z.string().optional(),
+    level: z.enum(['info', 'warning', 'error']).optional(),
+    startDate: z.date().optional(),
+    endDate: z.date().optional(),
   }),
 };
 
 const getSecurityStats = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  query: Joi.object().keys({
-    days: Joi.number().integer().min(1).max(365).optional(),
+  query: z.object({
+    days: z.coerce
+      .number()
+      .min(1, { message: 'Days must be at least 1' })
+      .max(365, { message: 'Days cannot exceed 365' })
+      .optional(),
   }),
 };
 
 // Public profile
 const getPublicProfile = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 // Data export and account management
 const exportUserData = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const deleteAccount = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
-  body: Joi.object().keys({
-    password: Joi.string().required(),
+  body: z.object({
+    password: z.string().min(1, { message: 'Password is required' }),
   }),
 };
 
 // Admin-only endpoints
 const getUsersWithExpiringPasswords = {
-  query: Joi.object().keys({
-    days: Joi.number().integer().min(1).max(30).optional(),
+  query: z.object({
+    days: z.coerce
+      .number()
+      .min(1, { message: 'Days must be at least 1' })
+      .max(30, { message: 'Days cannot exceed 30' })
+      .optional(),
   }),
 };
 
 const unlockUserAccount = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
 const forcePasswordChange = {
-  params: Joi.object().keys({
-    userId: Joi.string().required(),
+  params: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
   }),
 };
 
@@ -309,7 +342,7 @@ export default {
   getUserProfile,
   updateUserProfile,
   getUserPreferences,
-  updateUserPreferences,
+  updateUserPreferences: getUserPreferences,
   getPrivacySettings,
   updatePrivacySettings,
   getAccountStatus,

@@ -4,6 +4,7 @@ import twoFactorController from './twoFactor.controller';
 import deviceController from './device.controller';
 import profileController from './profile.controller';
 import healthController from './health.controller';
+import * as ipSecurityController from './ipSecurity.controller';
 
 export {
   authController,
@@ -12,4 +13,5 @@ export {
   deviceController,
   profileController,
   healthController,
+  ipSecurityController,
 };

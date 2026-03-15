@@ -1,6 +1,6 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync';
-import ipSecurityService from '../services/ipSecurityManagement.service';
+import { ipSecurityService } from '../services';
 import { Request, Response } from 'express';
 import { IPSecurityRuleType } from '@prisma/client';
 
@@ -24,12 +24,7 @@ const createIPRule = catchAsync(async (req: Request, res: Response) => {
  * Get all IP security rules
  */
 const getIPRules = catchAsync(async (req: Request, res: Response) => {
-  const {
-    ruleType,
-    isActive,
-    page = 1,
-    limit = 50,
-  } = req.query;
+  const { ruleType, isActive, page = 1, limit = 50 } = req.query;
 
   const filters: any = {};
   if (ruleType) filters.ruleType = ruleType as IPSecurityRuleType;
@@ -52,7 +47,8 @@ const getIPRules = catchAsync(async (req: Request, res: Response) => {
  */
 const updateIPRule = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const rule = await ipSecurityService.updateIPRule(id, {
+  const ruleId = Array.isArray(id) ? id[0] : id;
+  const rule = await ipSecurityService.updateIPRule(ruleId, {
     ...req.body,
     updatedBy: (req.user as any)?.id,
   });
@@ -69,7 +65,8 @@ const updateIPRule = catchAsync(async (req: Request, res: Response) => {
  */
 const deleteIPRule = catchAsync(async (req: Request, res: Response) => {
   const { id } = req.params;
-  await ipSecurityService.deleteIPRule(id, (req.user as any)?.id);
+  const ruleId = Array.isArray(id) ? id[0] : id;
+  await ipSecurityService.deleteIPRule(ruleId, (req.user as any)?.id);
 
   res.json({
     success: true,
@@ -101,11 +98,4 @@ const clearIPCache = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
-export {
-  createIPRule,
-  getIPRules,
-  updateIPRule,
-  deleteIPRule,
-  getIPStats,
-  clearIPCache,
-};
+export { createIPRule, getIPRules, updateIPRule, deleteIPRule, getIPStats, clearIPCache };

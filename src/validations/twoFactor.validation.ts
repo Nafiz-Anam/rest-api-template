@@ -1,27 +1,39 @@
-import Joi from 'joi';
+import { z } from 'zod';
 
 const enableTwoFactor = {
-  body: Joi.object().keys({
-    token: Joi.string().min(6).max(8).required(),
+  body: z.object({
+    token: z
+      .string()
+      .min(6, { message: 'Token must be at least 6 characters' })
+      .max(8, { message: 'Token cannot exceed 8 characters' }),
   }),
 };
 
 const disableTwoFactor = {
-  body: Joi.object().keys({
-    token: Joi.string().min(6).max(8).required(),
+  body: z.object({
+    token: z
+      .string()
+      .min(6, { message: 'Token must be at least 6 characters' })
+      .max(8, { message: 'Token cannot exceed 8 characters' }),
   }),
 };
 
 const regenerateBackupCodes = {
-  body: Joi.object().keys({
-    token: Joi.string().min(6).max(8).required(),
+  body: z.object({
+    token: z
+      .string()
+      .min(6, { message: 'Token must be at least 6 characters' })
+      .max(8, { message: 'Token cannot exceed 8 characters' }),
   }),
 };
 
 const verifyToken = {
-  body: Joi.object().keys({
-    userId: Joi.string().required(),
-    token: Joi.string().min(6).max(8).required(),
+  body: z.object({
+    userId: z.string().min(1, { message: 'User ID is required' }),
+    token: z
+      .string()
+      .min(6, { message: 'Token must be at least 6 characters' })
+      .max(8, { message: 'Token cannot exceed 8 characters' }),
   }),
 };
 

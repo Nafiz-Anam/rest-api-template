@@ -3,3 +3,4 @@ export { default as userValidation } from './user.validation';
 export { default as twoFactorValidation } from './twoFactor.validation';
 export { default as deviceValidation } from './device.validation';
 export { default as profileValidation } from './profile.validation';
+export { ipSecurityValidation } from './ipSecurity.validation';

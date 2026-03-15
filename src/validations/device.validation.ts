@@ -1,20 +1,20 @@
-import Joi from 'joi';
+import { z } from 'zod';
 
 const trustDevice = {
-  params: Joi.object().keys({
-    deviceId: Joi.string().required(),
+  params: z.object({
+    deviceId: z.string().min(1, { message: 'Device ID is required' }),
   }),
 };
 
 const removeDevice = {
-  params: Joi.object().keys({
-    deviceId: Joi.string().required(),
+  params: z.object({
+    deviceId: z.string().min(1, { message: 'Device ID is required' }),
   }),
 };
 
 const removeAllOtherDevices = {
-  body: Joi.object().keys({
-    currentDeviceId: Joi.string().required(),
+  body: z.object({
+    currentDeviceId: z.string().min(1, { message: 'Current device ID is required' }),
   }),
 };
 

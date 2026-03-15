@@ -1,47 +1,39 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import Joi from 'joi';
+import { z } from 'zod';
 
 dotenv.config({
   path: path.join(process.cwd(), '.env'),
   quiet: true,
 });
 
-const envVarsSchema = Joi.object()
-  .keys({
-    NODE_ENV: Joi.string().valid('production', 'development', 'test').required(),
-    PORT: Joi.number().default(3000),
-    CLIENT_URL: Joi.string().default('http://localhost:3000').description('Client application URL'),
-    JWT_SECRET: Joi.string().required().description('JWT secret key'),
-    JWT_ACCESS_EXPIRATION_MINUTES: Joi.number()
-      .default(30)
-      .description('minutes after which access tokens expire'),
-    JWT_REFRESH_EXPIRATION_DAYS: Joi.number()
-      .default(30)
-      .description('days after which refresh tokens expire'),
-    JWT_RESET_PASSWORD_EXPIRATION_MINUTES: Joi.number()
-      .default(10)
-      .description('minutes after which reset password token expires'),
-    JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: Joi.number()
-      .default(10)
-      .description('minutes after which verify email token expires'),
-    SMTP_HOST: Joi.string().description('server that will send the emails'),
-    SMTP_PORT: Joi.number().description('port to connect to the email server'),
-    SMTP_USERNAME: Joi.string().description('username for email server'),
-    SMTP_PASSWORD: Joi.string().description('password for email server'),
-    EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
-  })
-  .unknown();
+const envVarsSchema = z.object({
+  NODE_ENV: z.enum(['production', 'development', 'test']),
+  PORT: z.string().transform(Number).pipe(z.number().default(3000)),
+  CLIENT_URL: z.string().default('http://localhost:3000'),
+  JWT_SECRET: z.string(),
+  JWT_ACCESS_EXPIRATION_MINUTES: z.string().transform(Number).pipe(z.number().default(30)),
+  JWT_REFRESH_EXPIRATION_DAYS: z.string().transform(Number).pipe(z.number().default(30)),
+  JWT_RESET_PASSWORD_EXPIRATION_MINUTES: z.string().transform(Number).pipe(z.number().default(10)),
+  JWT_VERIFY_EMAIL_EXPIRATION_MINUTES: z.string().transform(Number).pipe(z.number().default(10)),
+  SMTP_HOST: z.string(),
+  SMTP_PORT: z.string().transform(Number).pipe(z.number()),
+  SMTP_USERNAME: z.string(),
+  SMTP_PASSWORD: z.string(),
+  EMAIL_FROM: z.string(),
+});
 
-const { value: envVars, error } = envVarsSchema
-  .prefs({ errors: { label: 'key' } })
-  .validate(process.env);
+let envVars: z.infer<typeof envVarsSchema>;
 
-if (error) {
-  throw new Error(`Config validation error: ${error.message}`);
+try {
+  envVars = envVarsSchema.parse(process.env);
+} catch (error) {
+  throw new Error(
+    `Config validation error: ${error instanceof z.ZodError ? error.issues[0]?.message : error.message}`
+  );
 }
 
-export default {
+const config = {
   env: envVars.NODE_ENV,
   port: envVars.PORT,
   jwt: {
@@ -64,3 +56,5 @@ export default {
   },
   clientUrl: envVars.CLIENT_URL,
 };
+
+export default config;

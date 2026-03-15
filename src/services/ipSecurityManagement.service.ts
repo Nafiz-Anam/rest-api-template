@@ -1,45 +1,16 @@
 import { Request } from 'express';
 import logger from '../config/logger';
-import prisma, { IPSecurityRuleType } from '../client';
-
-interface IPSecurityConfig {
-  enableGeolocation: boolean;
-  allowedCountries: string[];
-  suspiciousCountries: string[];
-  maxRequestsPerIP: number;
-  timeWindowMs: number;
-}
-
-interface IPAnalysis {
-  ip: string;
-  country?: string;
-  isWhitelisted: boolean;
-  isBlacklisted: boolean;
-  isSuspicious: boolean;
-  isBlocked: boolean;
-  requestCount: number;
-  firstSeen: Date;
-  lastSeen: Date;
-  reputation: 'high' | 'medium' | 'low' | 'unknown';
-  riskScore: number;
-}
-
-interface CreateIPRule {
-  ipAddress: string;
-  cidrRange?: string;
-  ruleType: IPSecurityRuleType;
-  reason?: string;
-  createdBy?: string;
-}
-
-interface UpdateIPRule {
-  ipAddress?: string;
-  cidrRange?: string;
-  ruleType?: IPSecurityRuleType;
-  reason?: string;
-  isActive?: boolean;
-  updatedBy?: string;
-}
+import prisma from '../client';
+import {
+  IPSecurityRuleType,
+  IPSecurityConfig,
+  IPAnalysis,
+  CreateIPRule,
+  UpdateIPRule,
+  IPStats,
+  IPRuleFilters,
+  IPRuleListResponse,
+} from '../types/ipSecurity.types';
 
 class IPSecurityManagementService {
   private static instance: IPSecurityManagementService;
@@ -69,7 +40,7 @@ class IPSecurityManagementService {
    */
   private async loadIPRulesFromDatabase(): Promise<void> {
     try {
-      const rules = await prisma.ipSecurityRule.findMany({
+      const rules = await prisma.iPSecurityRule.findMany({
         where: { isActive: true },
       });
 
@@ -84,7 +55,7 @@ class IPSecurityManagementService {
    */
   async createIPRule(data: CreateIPRule): Promise<any> {
     try {
-      const rule = await prisma.ipSecurityRule.create({
+      const rule = await prisma.iPSecurityRule.create({
         data: {
           ipAddress: data.ipAddress,
           cidrRange: data.cidrRange,
@@ -114,17 +85,7 @@ class IPSecurityManagementService {
   /**
    * Get all IP security rules
    */
-  async getIPRules(filters?: {
-    ruleType?: IPSecurityRuleType;
-    isActive?: boolean;
-    page?: number;
-    limit?: number;
-  }): Promise<{
-    rules: any[];
-    total: number;
-    page: number;
-    totalPages: number;
-  }> {
+  async getIPRules(filters?: IPRuleFilters): Promise<IPRuleListResponse> {
     try {
       const where: any = {};
 
@@ -141,7 +102,7 @@ class IPSecurityManagementService {
       const skip = (page - 1) * limit;
 
       const [rules, total] = await Promise.all([
-        prisma.ipSecurityRule.findMany({
+        prisma.iPSecurityRule.findMany({
           where,
           include: {
             user: {
@@ -156,7 +117,7 @@ class IPSecurityManagementService {
           skip,
           take: limit,
         }),
-        prisma.ipSecurityRule.count({ where }),
+        prisma.iPSecurityRule.count({ where }),
       ]);
 
       return {
@@ -176,7 +137,7 @@ class IPSecurityManagementService {
    */
   async updateIPRule(id: string, data: UpdateIPRule): Promise<any> {
     try {
-      const rule = await prisma.ipSecurityRule.update({
+      const rule = await prisma.iPSecurityRule.update({
         where: { id },
         data: {
           ...(data.ipAddress && { ipAddress: data.ipAddress }),
@@ -208,7 +169,7 @@ class IPSecurityManagementService {
    */
   async deleteIPRule(id: string, deletedBy?: string): Promise<void> {
     try {
-      await prisma.ipSecurityRule.delete({
+      await prisma.iPSecurityRule.delete({
         where: { id },
       });
 
@@ -241,6 +202,7 @@ class IPSecurityManagementService {
       isWhitelisted: false,
       isBlacklisted: false,
       isSuspicious: false,
+      isBlocked: false,
       requestCount: 0,
       firstSeen: new Date(),
       lastSeen: new Date(),
@@ -250,7 +212,7 @@ class IPSecurityManagementService {
 
     try {
       // Check database rules
-      const rules = await prisma.ipSecurityRule.findMany({
+      const rules = await prisma.iPSecurityRule.findMany({
         where: { isActive: true },
       });
 
@@ -385,28 +347,37 @@ class IPSecurityManagementService {
    */
   private async updateIPAnalytics(analysis: IPAnalysis): Promise<void> {
     try {
-      await prisma.ipSecurityAnalytics.upsert({
+      const existing = await prisma.iPSecurityAnalytics.findFirst({
         where: { ipAddress: analysis.ip },
-        update: {
-          requestCount: { increment: 1 },
-          lastSeen: new Date(),
-          isBlocked: analysis.isBlocked || analysis.isBlacklisted,
-          blockReason: analysis.isBlacklisted ? 'Blacklisted' : undefined,
-          riskScore: analysis.riskScore,
-          ...(analysis.country && { countryCode: analysis.country }),
-        },
-        create: {
-          ipAddress: analysis.ip,
-          countryCode: analysis.country,
-          reputation: analysis.reputation,
-          requestCount: 1,
-          firstSeen: analysis.firstSeen,
-          lastSeen: analysis.lastSeen,
-          isBlocked: analysis.isBlocked || analysis.isBlacklisted,
-          blockReason: analysis.isBlacklisted ? 'Blacklisted' : undefined,
-          riskScore: analysis.riskScore,
-        },
       });
+
+      if (existing) {
+        await prisma.iPSecurityAnalytics.update({
+          where: { id: existing.id },
+          data: {
+            requestCount: { increment: 1 },
+            lastSeen: new Date(),
+            isBlocked: analysis.isBlocked || analysis.isBlacklisted,
+            blockReason: analysis.isBlacklisted ? 'Blacklisted' : undefined,
+            riskScore: analysis.riskScore,
+            ...(analysis.country && { countryCode: analysis.country }),
+          },
+        });
+      } else {
+        await prisma.iPSecurityAnalytics.create({
+          data: {
+            ipAddress: analysis.ip,
+            countryCode: analysis.country,
+            reputation: analysis.reputation,
+            requestCount: 1,
+            firstSeen: analysis.firstSeen,
+            lastSeen: analysis.lastSeen,
+            isBlocked: analysis.isBlocked || analysis.isBlacklisted,
+            blockReason: analysis.isBlacklisted ? 'Blacklisted' : undefined,
+            riskScore: analysis.riskScore,
+          },
+        });
+      }
     } catch (error) {
       logger.error('Failed to update IP analytics', { error, ip: analysis.ip });
     }
@@ -447,21 +418,14 @@ class IPSecurityManagementService {
   /**
    * Get IP statistics
    */
-  async getIPStats(): Promise<{
-    totalIPs: number;
-    whitelistedIPs: number;
-    blacklistedIPs: number;
-    suspiciousIPs: number;
-    topCountries: Array<{ country: string; count: number }>;
-    recentBlocks: Array<{ ipAddress: string; blockReason: string; timestamp: Date }>;
-  }> {
+  async getIPStats(): Promise<IPStats> {
     try {
       const [rules, analytics] = await Promise.all([
-        prisma.ipSecurityRule.groupBy({
+        prisma.iPSecurityRule.groupBy({
           by: ['ruleType'],
           _count: { ruleType: true },
         }),
-        prisma.ipSecurityAnalytics.groupBy({
+        prisma.iPSecurityAnalytics.groupBy({
           by: ['countryCode'],
           _count: { countryCode: true },
           orderBy: { _count: { countryCode: 'desc' } },
@@ -469,13 +433,13 @@ class IPSecurityManagementService {
         }),
       ]);
 
-      const stats = {
+      const stats: IPStats = {
         totalIPs: 0,
         whitelistedIPs: 0,
         blacklistedIPs: 0,
         suspiciousIPs: 0,
-        topCountries: [] as Array<{ country: string; count: number }>,
-        recentBlocks: [] as Array<{ ipAddress: string; blockReason: string; timestamp: Date }>,
+        topCountries: [],
+        recentBlocks: [],
       };
 
       // Count rules by type
@@ -501,7 +465,7 @@ class IPSecurityManagementService {
       }));
 
       // Get recent blocks
-      const recentBlocks = await prisma.ipSecurityAnalytics.findMany({
+      const recentBlocks = await prisma.iPSecurityAnalytics.findMany({
         where: { isBlocked: true },
         orderBy: { lastSeen: 'desc' },
         take: 10,
