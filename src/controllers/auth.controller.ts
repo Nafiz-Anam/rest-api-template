@@ -5,8 +5,12 @@ import authService from '../services/auth.service';
 import tokenService from '../services/token.service';
 import emailService from '../services/email.service';
 import userService from '../services/user.service';
-import { createEmailVerificationOtp } from '../services/otp.service';
-import { sendEmailVerificationOtp } from '../services/email.service';
+import {
+  createEmailVerificationOtp,
+  createPasswordResetOtpByEmail,
+  verifyPasswordResetOtpByEmail,
+} from '../services/otp.service';
+import { sendEmailVerificationOtp, sendPasswordResetOtp } from '../services/email.service';
 import deviceService from '../services/device.service';
 import { passwordSecurityService } from '../services';
 import { Request, Response } from 'express';
@@ -68,8 +72,24 @@ const refreshTokens = catchAsync(async (req: Request, res: Response) => {
  * @access Public
  */
 const forgotPassword = catchAsync(async (req: Request, res: Response) => {
-  const resetPasswordToken = await tokenService.generateResetPasswordToken(req.body.email);
-  await emailService.sendResetPasswordEmail(req.body.email, resetPasswordToken, 'User');
+  const { email } = req.body;
+
+  // Generate token for link-based reset (primary method)
+  const resetPasswordToken = await tokenService.generateResetPasswordToken(email);
+
+  // Generate OTP for OTP-based reset (secondary method)
+  const resetPasswordOtp = await createPasswordResetOtpByEmail(email);
+
+  // Get user details for email
+  const user = await userService.getUserByEmail(email);
+  const userName = user?.name || 'User';
+
+  // Send both email types
+  await Promise.all([
+    emailService.sendResetPasswordEmail(email, resetPasswordToken, userName),
+    emailService.sendPasswordResetOtp(email, resetPasswordOtp, userName),
+  ]);
+
   res.status(httpStatus.NO_CONTENT).send();
 });
 
@@ -81,6 +101,42 @@ const forgotPassword = catchAsync(async (req: Request, res: Response) => {
 const resetPassword = catchAsync(async (req: Request, res: Response) => {
   await authService.resetPassword(req.query.token as string, req.body.password, req);
   res.status(httpStatus.NO_CONTENT).send();
+});
+
+/**
+ * Reset password with OTP
+ * @route POST /v1/auth/reset-password-otp
+ * @access Public
+ */
+const resetPasswordWithOtp = catchAsync(async (req: Request, res: Response) => {
+  const { email, otp, password } = req.body;
+
+  // Verify OTP first
+  const isValidOtp = await verifyPasswordResetOtpByEmail(email, otp);
+  if (!isValidOtp) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid or expired OTP');
+  }
+
+  // Reset password using auth service
+  await authService.resetPasswordByOtp(email, password, req);
+
+  res.status(httpStatus.NO_CONTENT).send();
+});
+
+/**
+ * Verify password reset OTP (before showing reset form)
+ * @route POST /v1/auth/verify-reset-otp
+ * @access Public
+ */
+const verifyResetOtp = catchAsync(async (req: Request, res: Response) => {
+  const { email, otp } = req.body;
+
+  const isValidOtp = await verifyPasswordResetOtpByEmail(email, otp);
+  if (!isValidOtp) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid or expired OTP');
+  }
+
+  res.status(httpStatus.OK).send({ message: 'OTP verified successfully' });
 });
 
 /**
@@ -299,6 +355,8 @@ export default {
   refreshTokens,
   forgotPassword,
   resetPassword,
+  resetPasswordWithOtp,
+  verifyResetOtp,
   sendVerificationEmail,
   verifyEmail,
   changePassword,
