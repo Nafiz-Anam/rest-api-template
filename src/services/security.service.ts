@@ -2,6 +2,7 @@ import { Request } from 'express';
 import { User, SecurityEventType } from '@prisma/client';
 import prisma from '../client';
 import logger from '../config/logger';
+import enhancedSecurityLogging from './enhancedSecurityLogging.service';
 
 interface SecurityEventData {
   userId?: string;
@@ -18,7 +19,18 @@ interface SecurityEventData {
  */
 const logSecurityEvent = async (data: SecurityEventData): Promise<void> => {
   try {
-    // Log to database for audit trail
+    // Use enhanced security logging service (category, severity, and riskScore are calculated automatically)
+    await enhancedSecurityLogging.logSecurityEvent({
+      userId: data.userId,
+      email: data.email,
+      ipAddress: data.ipAddress,
+      userAgent: data.userAgent,
+      eventType: data.eventType,
+      details: data.details,
+      success: data.success,
+    } as any); // Type assertion since enhanced service calculates missing fields
+
+    // Keep the original database logging for backward compatibility
     await prisma.securityLog.create({
       data: {
         userId: data.userId,

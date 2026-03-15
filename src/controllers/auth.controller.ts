@@ -238,6 +238,59 @@ const endSession = catchAsync(async (req: Request, res: Response) => {
   res.status(httpStatus.NO_CONTENT).send();
 });
 
+/**
+ * Manually trigger token cleanup (admin only)
+ * @route POST /v1/auth/admin/cleanup-tokens
+ * @access Private (Admin)
+ */
+const cleanupTokens = catchAsync(async (req: Request, res: Response) => {
+  const stats = await require('../services/tokenCleanup.service').cleanupExpiredTokens();
+  res.send({
+    message: 'Token cleanup completed successfully',
+    stats,
+  });
+});
+
+/**
+ * Get token statistics (admin only)
+ * @route GET /v1/auth/admin/token-stats
+ * @access Private (Admin)
+ */
+const getTokenStats = catchAsync(async (req: Request, res: Response) => {
+  const stats = await require('../services/tokenCleanup.service').getTokenStatistics();
+  res.send(stats);
+});
+
+/**
+ * Get performance statistics (admin only)
+ * @route GET /v1/auth/admin/performance-stats
+ * @access Private (Admin)
+ */
+const getPerformanceStats = catchAsync(async (req: Request, res: Response) => {
+  const stats = require('../services/performanceMonitoring.service').getEndpointStats();
+  res.send(Object.fromEntries(stats));
+});
+
+/**
+ * Get system performance overview (admin only)
+ * @route GET /v1/auth/admin/system-performance
+ * @access Private (Admin)
+ */
+const getSystemPerformance = catchAsync(async (req: Request, res: Response) => {
+  const performance = require('../services/performanceMonitoring.service').getSystemPerformance();
+  res.send(performance);
+});
+
+/**
+ * Get performance alerts (admin only)
+ * @route GET /v1/auth/admin/performance-alerts
+ * @access Private (Admin)
+ */
+const getPerformanceAlerts = catchAsync(async (req: Request, res: Response) => {
+  const alerts = require('../services/performanceMonitoring.service').getPerformanceAlerts();
+  res.send(alerts);
+});
+
 export default {
   register,
   login,
@@ -258,4 +311,9 @@ export default {
   verifyEmailOtp,
   listActiveSessions,
   endSession,
+  cleanupTokens,
+  getTokenStats,
+  getPerformanceStats,
+  getSystemPerformance,
+  getPerformanceAlerts,
 };

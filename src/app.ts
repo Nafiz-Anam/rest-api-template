@@ -14,6 +14,7 @@ import {
   passwordResetLimiter,
   registrationLimiter,
 } from './middlewares/rateLimiter';
+import { performanceTracker, addPerformanceHeaders } from './middlewares/performanceMonitoring';
 import routes from './routes/v1';
 import { healthController } from './controllers';
 import { errorConverter, errorHandler } from './middlewares/error';
@@ -48,6 +49,10 @@ app.use(cors());
 // jwt authentication
 app.use(passport.initialize());
 passport.use('jwt', jwtStrategy);
+
+// Performance monitoring
+app.use(performanceTracker);
+app.use(addPerformanceHeaders);
 
 // Health check routes (no rate limiting)
 app.get('/v1/health', healthController.healthCheck);

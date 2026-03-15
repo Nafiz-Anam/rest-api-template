@@ -1,13 +1,19 @@
 import express from 'express';
+import httpStatus from 'http-status';
 import validate from '../../middlewares/validate';
 import { authValidation } from '../../validations';
 import { authController } from '../../controllers';
 import auth from '../../middlewares/auth';
 import {
-  authLimiter,
-  passwordResetLimiter,
-  registrationLimiter,
-} from '../../middlewares/rateLimiter';
+  progressiveAuthLimiter,
+  progressivePasswordResetLimiter,
+  progressiveRegistrationLimiter,
+  resetRateLimit,
+  getRateLimitStats,
+} from '../../middlewares/progressiveRateLimiter';
+import { ipSecurityMiddleware, adminIPSecurity } from '../../middlewares/ipSecurity';
+import { requireCaptcha, generateCaptcha } from '../../middlewares/captcha';
+import logger from '../../config/logger';
 
 const router = express.Router();
 
@@ -16,14 +22,28 @@ const router = express.Router();
  * @desc Register user
  * @access Public
  */
-router.post('/register', validate(authValidation.register), authController.register);
+router.post(
+  '/register',
+  ipSecurityMiddleware,
+  requireCaptcha,
+  progressiveRegistrationLimiter,
+  validate(authValidation.register),
+  authController.register
+);
 
 /**
  * @route POST /v1/auth/login
  * @desc Login user
  * @access Public
  */
-router.post('/login', validate(authValidation.login), authController.login);
+router.post(
+  '/login',
+  ipSecurityMiddleware,
+  requireCaptcha,
+  progressiveAuthLimiter,
+  validate(authValidation.login),
+  authController.login
+);
 
 /**
  * @route POST /v1/auth/verify-2fa
@@ -32,6 +52,7 @@ router.post('/login', validate(authValidation.login), authController.login);
  */
 router.post(
   '/verify-2fa',
+  progressiveAuthLimiter,
   validate(authValidation.verifyTwoFactor),
   authController.verifyTwoFactor
 );
@@ -41,7 +62,13 @@ router.post(
  * @desc Logout user
  * @access Private
  */
-router.post('/logout', auth(), validate(authValidation.logout), authController.logout);
+router.post(
+  '/logout',
+  auth(),
+  progressiveAuthLimiter,
+  validate(authValidation.logout),
+  authController.logout
+);
 
 /**
  * @route POST /v1/auth/refresh-tokens
@@ -50,6 +77,7 @@ router.post('/logout', auth(), validate(authValidation.logout), authController.l
  */
 router.post(
   '/refresh-tokens',
+  progressiveAuthLimiter,
   validate(authValidation.refreshTokens),
   authController.refreshTokens
 );
@@ -61,6 +89,7 @@ router.post(
  */
 router.post(
   '/forgot-password',
+  progressivePasswordResetLimiter,
   validate(authValidation.forgotPassword),
   authController.forgotPassword
 );
@@ -72,6 +101,7 @@ router.post(
  */
 router.post(
   '/reset-password',
+  progressivePasswordResetLimiter,
   validate(authValidation.resetPassword),
   authController.resetPassword
 );
@@ -176,6 +206,100 @@ router.get(
 
 router.get('/sessions', auth(), authController.listActiveSessions);
 router.post('/sessions/end', auth(), authController.endSession);
+
+/**
+ * @route POST /v1/auth/admin/cleanup-tokens
+ * @desc Manually trigger token cleanup (admin only)
+ * @access Private (Admin)
+ */
+router.post('/admin/cleanup-tokens', auth('manageUsers'), authController.cleanupTokens);
+
+/**
+ * @route POST /v1/auth/admin/reset-rate-limit
+ * @desc Reset rate limit for user (admin only)
+ * @access Private (Admin)
+ */
+router.post('/admin/reset-rate-limit', auth('manageUsers'), resetRateLimit('auth'));
+
+/**
+ * @route GET /v1/auth/admin/rate-limit-stats
+ * @desc Get rate limit statistics (admin only)
+ * @access Private (Admin)
+ */
+router.get('/admin/rate-limit-stats', auth('manageUsers'), getRateLimitStats('auth'));
+
+/**
+ * @route GET /v1/auth/admin/performance-stats
+ * @desc Get performance statistics (admin only)
+ * @access Private (Admin)
+ */
+router.get('/admin/performance-stats', auth('manageUsers'), authController.getPerformanceStats);
+
+/**
+ * @route GET /v1/auth/admin/system-performance
+ * @desc Get system performance overview (admin only)
+ * @access Private (Admin)
+ */
+router.get('/admin/system-performance', auth('manageUsers'), authController.getSystemPerformance);
+
+/**
+ * @route GET /v1/auth/admin/performance-alerts
+ * @desc Get performance alerts (admin only)
+ * @access Private (Admin)
+ */
+router.get('/admin/performance-alerts', auth('manageUsers'), authController.getPerformanceAlerts);
+
+/**
+ * @route POST /v1/auth/admin/clear-ip-cache
+ * @desc Clear IP security cache (admin only)
+ * @access Private (Admin)
+ */
+router.post('/admin/clear-ip-cache', auth('manageUsers'), adminIPSecurity);
+
+/**
+ * @route GET /v1/auth/admin/ip-stats
+ * @desc Get IP security statistics (admin only)
+ * @access Private (Admin)
+ */
+router.get('/admin/ip-stats', auth('manageUsers'), adminIPSecurity);
+
+/**
+ * @route POST /v1/auth/admin/captcha-config
+ * @desc Update CAPTCHA configuration (admin only)
+ * @access Private (Admin)
+ */
+router.post('/admin/captcha-config', auth('manageUsers'), async (req, res) => {
+  // Only allow admin users
+  if ((req.user as any)?.role !== 'ADMIN') {
+    return res.status(httpStatus.FORBIDDEN).json({
+      error: 'Access denied',
+      message: 'Admin access required',
+    });
+  }
+
+  try {
+    const captchaService = (await import('../../services/captcha.service')).default;
+    captchaService.updateConfig(req.body);
+
+    res.json({
+      success: true,
+      message: 'CAPTCHA configuration updated successfully',
+    });
+  } catch (error) {
+    logger.error('Update CAPTCHA config error', { error });
+    res.status(httpStatus.INTERNAL_SERVER_ERROR).json({
+      error: 'Internal server error',
+      message: 'Failed to update CAPTCHA configuration',
+    });
+  }
+});
+
+/**
+ * @route GET /v1/auth/captcha/generate
+ * @desc Generate CAPTCHA challenge
+ * @access Public
+ */
+router.get('/captcha/generate', generateCaptcha);
 
 export default router;
 

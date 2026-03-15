@@ -3,6 +3,7 @@ import app from './app';
 import prisma from './client';
 import config from './config/config';
 import logger from './config/logger';
+import tokenCleanupService from './services/tokenCleanup.service';
 
 logger.debug('Starting application initialization...');
 
@@ -15,6 +16,9 @@ prisma
     server = app.listen(config.port, () => {
       logger.info(`Listening to port ${config.port}`);
       logger.debug('Server started successfully');
+
+      // Schedule token cleanup to run every 15 minutes
+      tokenCleanupService.scheduleTokenCleanup(15);
     });
   })
   .catch(error => {
