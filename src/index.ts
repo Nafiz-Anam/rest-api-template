@@ -15,6 +15,8 @@ prisma
     logger.debug('Attempting to start HTTP server...');
     server = app.listen(config.port, () => {
       logger.info(`Listening to port ${config.port}`);
+      logger.info(`🚀 API Server running at http://localhost:${config.port}`);
+      logger.info(`📚 API Documentation available at http://localhost:${config.port}/v1/docs`);
       logger.debug('Server started successfully');
 
       // Schedule token cleanup to run every 15 minutes

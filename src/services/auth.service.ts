@@ -158,6 +158,33 @@ const resetPassword = async (resetPasswordToken: string, newPassword: string, re
 };
 
 /**
+ * Reset password with OTP verification
+ * @param {string} email
+ * @param {string} newPassword
+ * @param {Request} req
+ * @returns {Promise}
+ */
+const resetPasswordByOtp = async (email: string, newPassword: string, req: Request) => {
+  const user = await userService.getUserByEmail(email);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
+  }
+
+  await passwordSecurityService.updatePassword(user.id, newPassword);
+  await securityService.logSecurityEvent({
+    userId: user.id,
+    ipAddress: req.ip || '',
+    userAgent: req.get('User-Agent') || 'Unknown',
+    eventType: SecurityEventType.PASSWORD_RESET_COMPLETED,
+    success: true,
+    details: {
+      timestamp: new Date().toISOString(),
+      method: 'OTP',
+    },
+  });
+};
+
+/**
  * Verify email
  * @param {string} verifyEmailToken
  * @returns {Promise}
@@ -305,6 +332,7 @@ export default {
   logout,
   refreshAuth,
   resetPassword,
+  resetPasswordByOtp,
   verifyEmail,
   changePassword,
   setupTwoFactor,

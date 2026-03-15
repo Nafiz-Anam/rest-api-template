@@ -316,5 +316,5 @@ enum Gender {
 
 enum OtpType {
   EMAIL_VERIFICATION
-  // Add more types as needed (e.g., PHONE_VERIFICATION, PASSWORD_RESET)
+  PASSWORD_RESET
 }

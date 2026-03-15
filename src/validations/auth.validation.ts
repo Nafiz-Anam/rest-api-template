@@ -95,6 +95,21 @@ const verifyEmailOtp = {
   }),
 };
 
+const resetPasswordWithOtp = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    otp: Joi.string().length(6).required(),
+    password: Joi.string().required().custom(password),
+  }),
+};
+
+const verifyResetOtp = {
+  body: Joi.object().keys({
+    email: Joi.string().email().required(),
+    otp: Joi.string().length(6).required(),
+  }),
+};
+
 export default {
   register,
   login,
@@ -102,6 +117,8 @@ export default {
   refreshTokens,
   forgotPassword,
   resetPassword,
+  resetPasswordWithOtp,
+  verifyResetOtp,
   verifyEmail,
   verifyTwoFactor,
   changePassword,

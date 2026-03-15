@@ -311,6 +311,20 @@ export const sendEmailVerificationOtp = async (to: string, otp: string, name: st
 };
 
 /**
+ * Send password reset OTP
+ * @param {string} to
+ * @param {string} otp
+ * @param {string} name
+ * @returns {Promise}
+ */
+export const sendPasswordResetOtp = async (to: string, otp: string, name: string) => {
+  const subject = 'Your Password Reset Code';
+  const text = `Dear ${name},\nYour password reset code is: ${otp}\nThis code will expire in 10 minutes. If you did not request a password reset, please ignore this email.`;
+  const html = `<div>Dear ${name},<br><br>Your password reset code is: <b>${otp}</b><br><br>This code will expire in 10 minutes.<br>If you did not request a password reset, please ignore this email.</div>`;
+  await sendEmail(to, subject, text, html);
+};
+
+/**
  * Verify SMTP connection at startup
  */
 export const verifySmtpConnection = async () => {
@@ -337,5 +351,6 @@ export default {
   sendTwoFactorEmail,
   sendDeviceLoginEmail,
   sendEmailVerificationOtp,
+  sendPasswordResetOtp,
   transporter,
 };

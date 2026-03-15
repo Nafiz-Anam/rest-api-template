@@ -15,14 +15,18 @@ export const addPerformanceHeaders = (req: Request, res: Response, next: NextFun
   const startTime = Date.now();
 
   // Add performance headers
-  res.setHeader('X-Response-Time-Ms', '0');
-  res.setHeader('X-Server-Timestamp', new Date().toISOString());
+  if (!res.headersSent) {
+    res.setHeader('X-Response-Time-Ms', '0');
+    res.setHeader('X-Server-Timestamp', new Date().toISOString());
+  }
 
   // Override res.end to add final response time
   const originalEnd = res.end;
   res.end = function (this: Response, ...args: any[]) {
     const responseTime = Date.now() - startTime;
-    res.setHeader('X-Response-Time-Ms', responseTime.toString());
+    if (!res.headersSent) {
+      res.setHeader('X-Response-Time-Ms', responseTime.toString());
+    }
     return originalEnd.apply(this, args);
   };
 
