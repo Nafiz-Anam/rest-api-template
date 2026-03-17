@@ -6,16 +6,16 @@ import prisma from '../client';
 import { ActivityType } from '@prisma/client';
 
 export interface ProfileUpdateData {
-  firstName?: string;
-  lastName?: string;
-  bio?: string;
-  dateOfBirth?: Date;
-  phoneNumber?: string;
-  address?: string;
-  city?: string;
-  state?: string;
+  name?: string;
+  phone?: string;
+  phoneCode?: string;
   country?: string;
-  avatar?: string;
+  state?: string;
+  city?: string;
+  address?: string;
+  profilePicture?: string;
+  dateOfBirth?: Date;
+  gender?: string;
 }
 
 export interface PreferencesUpdateData {
@@ -46,13 +46,14 @@ export class ProfileService {
         id: true,
         email: true,
         name: true,
-        avatar: true,
-        bio: true,
+        profilePicture: true,
         phone: true,
         dateOfBirth: true,
         gender: true,
-        location: true,
-        website: true,
+        country: true,
+        state: true,
+        city: true,
+        address: true,
         isEmailVerified: true,
         twoFactorEnabled: true,
         twoFactorVerified: true,
@@ -75,12 +76,13 @@ export class ProfileService {
     const allowedFields = [
       'name',
       'phone',
-      'avatar',
-      'bio',
+      'profilePicture',
       'dateOfBirth',
       'gender',
-      'location',
-      'website',
+      'country',
+      'state',
+      'city',
+      'address',
     ];
 
     const updateData = pick(data, allowedFields);
@@ -101,12 +103,13 @@ export class ProfileService {
         email: true,
         name: true,
         phone: true,
-        avatar: true,
-        bio: true,
+        profilePicture: true,
         dateOfBirth: true,
         gender: true,
-        location: true,
-        website: true,
+        country: true,
+        state: true,
+        city: true,
+        address: true,
         updatedAt: true,
       },
     });
@@ -206,18 +209,19 @@ export class ProfileService {
   static async updateAvatar(userId: string, avatarUrl: string, ipAddress?: string) {
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { avatar: avatarUrl },
+      data: { profilePicture: avatarUrl },
       select: {
         id: true,
         email: true,
         name: true,
-        avatar: true,
-        bio: true,
+        profilePicture: true,
         phone: true,
         dateOfBirth: true,
         gender: true,
-        location: true,
-        website: true,
+        country: true,
+        state: true,
+        city: true,
+        address: true,
         isEmailVerified: true,
         twoFactorEnabled: true,
         twoFactorVerified: true,
@@ -278,7 +282,7 @@ export class ProfileService {
       select: {
         id: true,
         name: true,
-        avatar: true,
+        profilePicture: true,
         createdAt: true,
       },
     });
@@ -298,7 +302,7 @@ export class ProfileService {
     const publicProfile: any = {
       id: user.id,
       name: user.name,
-      avatar: user.avatar,
+      profilePicture: user.profilePicture,
       createdAt: user.createdAt,
     };
 
@@ -319,7 +323,7 @@ export class ProfileService {
       select: {
         id: true,
         name: true,
-        avatar: true,
+        profilePicture: true,
       },
       take: limit,
       skip: offset,
@@ -328,7 +332,7 @@ export class ProfileService {
     return users.map(user => ({
       id: user.id,
       name: user.name,
-      avatar: user.avatar,
+      profilePicture: user.profilePicture,
     }));
   }
 }

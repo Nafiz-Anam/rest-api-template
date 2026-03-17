@@ -137,30 +137,30 @@ const deleteAccount = catchAsync(async (req: Request, res: Response) => {
 });
 
 /**
- * Upload avatar
- * @route POST /v1/profile/avatar
+ * Upload profile picture
+ * @route POST /v1/profile/profile-picture
  * @access Private
  */
-const uploadAvatar = catchAsync(async (req: Request, res: Response) => {
+const uploadProfilePicture = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as User;
   if (!req.file) {
-    throw new ApiError(httpStatus.BAD_REQUEST, 'Avatar file is required');
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Profile picture file is required');
   }
 
-  // For now, just update the avatar field since we don't have an uploadAvatar method
-  const avatar = await ProfileService.updateAvatar(user.id, req.file.path, req.ip);
-  res.status(httpStatus.OK).send(avatar);
+  // For now, just update the profilePicture field since we don't have an uploadProfilePicture method
+  const profilePicture = await ProfileService.updateAvatar(user.id, req.file.path, req.ip);
+  res.status(httpStatus.OK).send(profilePicture);
 });
 
 /**
- * Remove avatar
- * @route DELETE /v1/profile/avatar
+ * Remove profile picture
+ * @route DELETE /v1/profile/profile-picture
  * @access Private
  */
-const removeAvatar = catchAsync(async (req: Request, res: Response) => {
+const removeProfilePicture = catchAsync(async (req: Request, res: Response) => {
   const user = req.user as User;
-  // For now, just update avatar to null since we don't have a removeAvatar method
-  const avatar = await ProfileService.updateAvatar(user.id, '', req.ip);
+  // For now, just update profilePicture to null since we don't have a removeProfilePicture method
+  const profilePicture = await ProfileService.updateAvatar(user.id, '', req.ip);
   res.status(httpStatus.NO_CONTENT).send();
 });
 
@@ -175,6 +175,6 @@ export default {
   getUserStats,
   exportUserData,
   deleteAccount,
-  uploadAvatar,
-  removeAvatar,
+  uploadProfilePicture,
+  removeProfilePicture,
 };

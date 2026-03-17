@@ -93,22 +93,22 @@ router.delete(
 );
 
 /**
- * @route POST /v1/profile/avatar
- * @desc Upload avatar
+ * @route POST /v1/profile/profile-picture
+ * @desc Upload profile picture
  * @access Private
  */
 router.post(
-  '/avatar',
-  upload.single('avatar'),
-  validate(profileValidation.uploadAvatar),
-  profileController.uploadAvatar
+  '/profile-picture',
+  upload.single('profilePicture'),
+  validate(profileValidation.uploadProfilePicture),
+  profileController.uploadProfilePicture
 );
 
 /**
- * @route DELETE /v1/profile/avatar
- * @desc Remove avatar
+ * @route DELETE /v1/profile/profile-picture
+ * @desc Remove profile picture
  * @access Private
  */
-router.delete('/avatar', profileController.removeAvatar);
+router.delete('/profile-picture', profileController.removeProfilePicture);
 
 export default router;

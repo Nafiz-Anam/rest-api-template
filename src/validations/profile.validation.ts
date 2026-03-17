@@ -7,8 +7,12 @@ const updateProfile = {
       .min(1, { message: 'Name must be at least 1 character' })
       .max(100, { message: 'Name cannot exceed 100 characters' })
       .optional(),
-    avatar: z.string().url({ message: 'Avatar must be a valid URL' }).optional(),
-    bio: z.string().max(500, { message: 'Bio cannot exceed 500 characters' }).optional(),
+    profilePicture: z.string().url({ message: 'Profile picture must be a valid URL' }).optional(),
+    phoneCode: z.string().optional(),
+    country: z.string().max(100).optional(),
+    state: z.string().max(100).optional(),
+    city: z.string().max(100).optional(),
+    address: z.string().max(500).optional(),
     phone: z
       .string()
       .regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone number format' })
@@ -17,10 +21,7 @@ const updateProfile = {
       .date()
       .max(new Date(), { message: 'Date of birth cannot be in the future' })
       .optional(),
-    gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
-    location: z.string().max(200, { message: 'Location cannot exceed 200 characters' }).optional(),
-    timezone: z.string().optional(),
-    language: z.enum(['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko']).optional(),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
   }),
 };
 
@@ -69,7 +70,7 @@ const deleteAccount = {
   }),
 };
 
-const uploadAvatar = {
+const uploadProfilePicture = {
   file: z.object({
     mimetype: z.enum(['image/jpeg', 'image/png', 'image/gif', 'image/webp'], {
       message: 'Invalid file type. Only JPEG, PNG, GIF, and WebP are allowed',
@@ -83,5 +84,5 @@ export default {
   updatePreferences,
   updatePrivacySettings,
   deleteAccount,
-  uploadAvatar,
+  uploadProfilePicture,
 };

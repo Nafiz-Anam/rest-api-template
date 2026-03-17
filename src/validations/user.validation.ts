@@ -27,8 +27,8 @@ const getUsers = {
     gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
     sortBy: z.string().optional(),
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
-    limit: z.coerce.number().integer().min(1).max(100).default(10),
-    page: z.coerce.number().integer().min(1).default(1),
+    limit: z.coerce.number().min(1).max(100).default(10),
+    page: z.coerce.number().min(1).default(1),
     search: z.string().optional(), // Global search across name, email, phone
   }),
 };
@@ -347,7 +347,7 @@ const exportUsers = {
     sortOrder: z.enum(['asc', 'desc']).default('desc'),
     search: z.string().optional(),
     format: z.enum(['pdf', 'excel']),
-    limit: z.coerce.number().integer().min(1).max(1000).default(100),
+    limit: z.coerce.number().min(1).max(1000).default(100),
   }),
 };
 
