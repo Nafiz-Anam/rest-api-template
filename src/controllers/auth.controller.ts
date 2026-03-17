@@ -1,5 +1,6 @@
 import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync';
+import { sendSuccess, sendCreated, ErrorCode } from '../utils/apiResponse';
 import ApiError from '../utils/ApiError';
 import authService from '../services/auth.service';
 import tokenService from '../services/token.service';
@@ -9,6 +10,10 @@ import {
   createEmailVerificationOtp,
   createPasswordResetOtpByEmail,
   verifyPasswordResetOtpByEmail,
+  resendEmailVerificationOtp as resendEmailOtp,
+  resendPasswordResetOtpByEmail as resendPasswordOtp,
+  generateOtpVerificationToken,
+  verifyOtpWithToken,
 } from '../services/otp.service';
 import { sendEmailVerificationOtp, sendPasswordResetOtp } from '../services/email.service';
 import deviceService from '../services/device.service';
@@ -27,10 +32,24 @@ const register = catchAsync(async (req: Request, res: Response) => {
   if (dbUser && dbUser.password) {
     await passwordSecurityService.addPasswordToHistory(user.id, dbUser.password);
   }
-  // Generate OTP and send via email
+  // Generate OTP verification token
+  const token = await generateOtpVerificationToken(user.id);
   const otp = await createEmailVerificationOtp(user.id);
-  await sendEmailVerificationOtp(user.email, otp, user.name || 'User');
-  res.status(httpStatus.CREATED).send({ user });
+
+  // Try to send email, but don't fail if email service is down
+  try {
+    await sendEmailVerificationOtp(user.email, otp, user.name || 'User');
+  } catch (emailError) {
+    // Log the error but continue with user creation
+    console.warn('Email service unavailable, user created without email verification:', emailError);
+  }
+
+  return sendCreated(
+    res,
+    { user, verificationToken: token },
+    'User registered successfully. Please check your email for verification.',
+    req.requestId
+  );
 });
 
 /**
@@ -41,7 +60,7 @@ const register = catchAsync(async (req: Request, res: Response) => {
 const login = catchAsync(async (req: Request, res: Response) => {
   const { email, password } = req.body;
   const tokens = await authService.loginUserWithEmailAndPassword(email, password, req);
-  res.send({ tokens });
+  return sendSuccess(res, { tokens }, 'Login successful', httpStatus.OK, req.requestId);
 });
 
 /**
@@ -268,14 +287,129 @@ const checkAccountLockoutStatus = catchAsync(async (req: Request, res: Response)
  * @route POST /v1/auth/verify-email-otp
  * @access Public
  */
-const verifyEmailOtp = catchAsync(async (req: Request, res: Response) => {
-  const { userId, otp } = req.body;
-  const valid = await require('../services/otp.service').verifyEmailOtp(userId, otp);
-  if (!valid) {
-    throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid or expired OTP');
+/**
+ * Resend email verification OTP
+ * @route POST /v1/auth/resend-email-verification
+ * @access Public
+ */
+const resendEmailVerification = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  // Find user by email
+  const user = await userService.getUserByEmail(email);
+  if (!user) {
+    throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
-  await userService.updateUserById(userId, { isEmailVerified: true });
-  res.status(httpStatus.OK).send({ message: 'Email verified successfully' });
+
+  // Check if email is already verified
+  if (user.isEmailVerified) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Email is already verified');
+  }
+
+  // Generate and send new OTP (will throw error if existing OTP is still valid)
+  try {
+    const otp = await resendEmailOtp(user.id);
+
+    // Try to send email, but don't fail if email service is down
+    try {
+      await sendEmailVerificationOtp(user.email, otp, user.name || 'User');
+    } catch (emailError) {
+      // Log the error but continue with OTP generation
+      console.warn('Email service unavailable, OTP generated but not sent:', emailError);
+    }
+
+    return sendSuccess(
+      res,
+      { message: 'Verification OTP sent successfully' },
+      'Please check your email for the verification code.',
+      httpStatus.OK,
+      req.requestId
+    );
+  } catch (otpError) {
+    throw new ApiError(httpStatus.TOO_MANY_REQUESTS, otpError.message);
+  }
+});
+
+/**
+ * Resend password reset OTP
+ * @route POST /v1/auth/resend-password-reset
+ * @access Public
+ */
+const resendPasswordReset = catchAsync(async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  // Find user by email
+  const user = await userService.getUserByEmail(email);
+  if (!user) {
+    // For security, don't reveal if email exists or not
+    return sendSuccess(
+      res,
+      { message: 'If the email exists, a reset code will be sent' },
+      'Please check your email for the password reset code.',
+      httpStatus.OK,
+      req.requestId
+    );
+  }
+
+  // Generate and send new OTP (will throw error if existing OTP is still valid)
+  try {
+    const otp = await resendPasswordOtp(user.id);
+
+    // Try to send email, but don't fail if email service is down
+    try {
+      await sendPasswordResetOtp(email, otp, user.name || 'User');
+    } catch (emailError) {
+      // Log the error but continue with OTP generation
+      console.warn('Email service unavailable, OTP generated but not sent:', emailError);
+    }
+
+    return sendSuccess(
+      res,
+      { message: 'Password reset OTP sent successfully' },
+      'Please check your email for the password reset code.',
+      httpStatus.OK,
+      req.requestId
+    );
+  } catch (otpError) {
+    throw new ApiError(httpStatus.TOO_MANY_REQUESTS, otpError.message);
+  }
+});
+
+/**
+ * Verify email OTP
+ * @route POST /v1/auth/verify-email-otp
+ * @access Public
+ */
+const verifyEmailOtp = catchAsync(async (req: Request, res: Response) => {
+  const { token, otp } = req.body;
+
+  // Enhanced validation
+  if (!token || !otp) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Token and OTP are required');
+  }
+
+  // Validate OTP format (6 digits)
+  if (!/^\d{6}$/.test(otp)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'OTP must be exactly 6 digits');
+  }
+
+  // Validate JWT token format
+  if (!/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(token)) {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid token format');
+  }
+
+  const valid = await verifyOtpWithToken(token, otp);
+  if (!valid) {
+    throw new ApiError(httpStatus.UNAUTHORIZED, 'Invalid or expired token/OTP combination');
+  }
+
+  return sendSuccess(
+    res,
+    { verified: true },
+    'Email verified successfully',
+    httpStatus.OK,
+    req.requestId
+  );
 });
 
 const listActiveSessions = catchAsync(async (req: Request, res: Response) => {
@@ -367,6 +501,8 @@ export default {
   regenerateBackupCodes,
   checkAccountLockoutStatus,
   verifyEmailOtp,
+  resendEmailVerification,
+  resendPasswordReset,
   listActiveSessions,
   endSession,
   cleanupTokens,

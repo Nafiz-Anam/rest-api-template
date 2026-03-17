@@ -9,8 +9,8 @@ dotenv.config({
 
 const envVarsSchema = z.object({
   NODE_ENV: z.enum(['production', 'development', 'test']),
-  PORT: z.string().transform(Number).pipe(z.number().default(3000)),
-  CLIENT_URL: z.string().default('http://localhost:3000'),
+  PORT: z.string().transform(Number).pipe(z.number().default(8000)),
+  CLIENT_URL: z.string().default('http://localhost:8000'),
   JWT_SECRET: z.string(),
   JWT_ACCESS_EXPIRATION_MINUTES: z.string().transform(Number).pipe(z.number().default(30)),
   JWT_REFRESH_EXPIRATION_DAYS: z.string().transform(Number).pipe(z.number().default(30)),
@@ -21,6 +21,10 @@ const envVarsSchema = z.object({
   SMTP_USERNAME: z.string(),
   SMTP_PASSWORD: z.string(),
   EMAIL_FROM: z.string(),
+  REDIS_HOST: z.string().default('localhost'),
+  REDIS_PORT: z.string().transform(Number).pipe(z.number().default(6379)),
+  REDIS_PASSWORD: z.string().optional(),
+  REDIS_DB: z.string().transform(Number).pipe(z.number().default(0)),
 });
 
 let envVars: z.infer<typeof envVarsSchema>;
@@ -55,6 +59,12 @@ const config = {
       },
     },
     from: envVars.EMAIL_FROM,
+  },
+  redis: {
+    host: envVars.REDIS_HOST,
+    port: envVars.REDIS_PORT,
+    password: envVars.REDIS_PASSWORD,
+    db: envVars.REDIS_DB,
   },
   clientUrl: envVars.CLIENT_URL,
 };

@@ -1,15 +1,48 @@
-FROM node:alpine
+# Multi-stage build for production optimization
+FROM node:22-alpine AS base
 
-RUN mkdir -p /usr/src/node-app && chown -R node:node /usr/src/node-app
-
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
 WORKDIR /usr/src/node-app
 
-COPY package.json yarn.lock ./
+# Install dependencies with pnpm only
+COPY package.json ./
+RUN npm install -g pnpm@latest && pnpm install
 
-USER node
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /usr/src/node-app
+COPY --from=deps /usr/src/node-app/node_modules ./node_modules
+COPY . .
 
-RUN yarn install --pure-lockfile
+# Generate Prisma client at build time
+RUN pnpm dlx prisma generate
 
-COPY --chown=node:node . .
+# Build the application
+RUN pnpm build
 
-EXPOSE 3000
+# Production image, copy all the files and run the app
+FROM node:22-alpine AS runner
+WORKDIR /usr/src/node-app
+
+ENV NODE_ENV production
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nodejs
+
+# Copy built application
+COPY --from=builder /usr/src/node-app/dist ./dist
+COPY --from=builder /usr/src/node-app/node_modules ./node_modules
+COPY --from=builder /usr/src/node-app/package.json ./package.json
+COPY --from=builder /usr/src/node-app/prisma ./prisma
+
+# Create app directory and set permissions
+RUN mkdir -p /usr/src/node-app && chown -R nodejs:nodejs /usr/src/node-app
+USER nodejs
+
+EXPOSE 8000
+
+ENV PORT 8000
+
+CMD ["pnpm", "start"]

@@ -1,6 +1,40 @@
-version: '3.8'
-
 services:
   node-app:
     container_name: node-app-dev
-    command: yarn dev -L
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/usr/src/node-app
+      - /usr/src/node-app/node_modules
+    depends_on:
+      - redis
+    networks:
+      - node-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis-dev
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - node-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  node-network:
+    driver: bridge

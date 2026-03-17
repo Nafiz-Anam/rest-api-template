@@ -2,15 +2,94 @@ import nodemailer from 'nodemailer';
 import config from '../config/config';
 import logger from '../config/logger';
 
-const transporter = nodemailer.createTransport({
-  host: config.email.smtp.host,
-  port: config.email.smtp.port,
-  secure: true,
-  auth: {
-    user: config.email.smtp.auth.user,
-    pass: config.email.smtp.auth.pass,
-  },
-});
+// Create transporter with error handling
+let transporter: nodemailer.Transporter;
+let emailServiceStatus = 'unknown';
+
+const initializeEmailService = () => {
+  try {
+    transporter = nodemailer.createTransport({
+      host: config.email.smtp.host,
+      port: config.email.smtp.port,
+      secure: config.email.smtp.port === 465, // true for 465, false for other ports
+      auth: {
+        user: config.email.smtp.auth.user,
+        pass: config.email.smtp.auth.pass,
+      },
+    });
+
+    // Verify connection on initialization
+    transporter.verify((error, success) => {
+      if (error) {
+        emailServiceStatus = 'error';
+        logger.error('Email service initialization failed', {
+          error: error.message,
+          host: config.email.smtp.host,
+          port: config.email.smtp.port,
+          user: config.email.smtp.auth.user,
+        });
+      } else {
+        emailServiceStatus = 'connected';
+        logger.info('Email service initialized successfully', {
+          host: config.email.smtp.host,
+          port: config.email.smtp.port,
+          user: config.email.smtp.auth.user,
+        });
+      }
+    });
+  } catch (error) {
+    emailServiceStatus = 'error';
+    logger.error('Failed to create email transporter', { error });
+  }
+};
+
+// Initialize email service on module load
+initializeEmailService();
+
+/**
+ * Check email service health
+ * @returns {Promise<Object>} Email service status
+ */
+const checkEmailServiceHealth = async () => {
+  if (!transporter) {
+    return {
+      status: 'error',
+      message: 'Email transporter not initialized',
+      host: config.email.smtp.host,
+      port: config.email.smtp.port,
+      user: config.email.smtp.auth.user,
+    };
+  }
+
+  try {
+    await new Promise((resolve, reject) => {
+      transporter.verify((error, success) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(success);
+        }
+      });
+    });
+
+    return {
+      status: 'connected',
+      message: 'Email service is healthy',
+      host: config.email.smtp.host,
+      port: config.email.smtp.port,
+      user: config.email.smtp.auth.user,
+    };
+  } catch (error) {
+    emailServiceStatus = 'error';
+    return {
+      status: 'error',
+      message: error.message,
+      host: config.email.smtp.host,
+      port: config.email.smtp.port,
+      user: config.email.smtp.auth.user,
+    };
+  }
+};
 
 /**
  * Send email
@@ -21,9 +100,30 @@ const transporter = nodemailer.createTransport({
  * @returns {Promise}
  */
 const sendEmail = async (to: string, subject: string, text: string, html: string) => {
-  const msg = { from: config.email.from, to, subject, text, html };
-  await transporter.sendMail(msg);
-  logger.info(`Email sent to ${to}`);
+  if (!transporter) {
+    const error = new Error('Email transporter not available');
+    logger.error('Email service not available', { to, subject });
+    throw error;
+  }
+
+  try {
+    const msg = { from: config.email.from, to, subject, text, html };
+    const result = await transporter.sendMail(msg);
+    logger.info(`Email sent successfully to ${to}`, {
+      messageId: result.messageId,
+      subject,
+      response: result.response,
+    });
+    return result;
+  } catch (error) {
+    logger.error('Failed to send email', {
+      to,
+      subject,
+      error: error.message,
+      emailServiceStatus,
+    });
+    throw error;
+  }
 };
 
 /**
@@ -34,7 +134,7 @@ const sendEmail = async (to: string, subject: string, text: string, html: string
  * @returns {Promise}
  */
 const sendResetPasswordEmail = async (to: string, token: string, name: string) => {
-  const resetPasswordUrl = `${config.clientUrl || 'http://localhost:3000'}/reset-password?token=${token}`;
+  const resetPasswordUrl = `${config.clientUrl || 'http://localhost:8000'}/reset-password?token=${token}`;
   const subject = 'Reset password';
   const text = `Dear ${name},
 To reset your password, click on this link: ${resetPasswordUrl}
@@ -51,7 +151,7 @@ If you did not request any password resets, then ignore this email.`;
  * @returns {Promise}
  */
 const sendVerificationEmail = async (to: string, token: string, name: string) => {
-  const verificationEmailUrl = `${config.clientUrl || 'http://localhost:3000'}/verify-email?token=${token}`;
+  const verificationEmailUrl = `${config.clientUrl || 'http://localhost:8000'}/verify-email?token=${token}`;
   const subject = 'Email Verification';
   const text = `Dear ${name},
 To verify your email, click on this link: ${verificationEmailUrl}
@@ -305,8 +405,8 @@ If this wasn't you, please secure your account immediately.`;
  */
 export const sendEmailVerificationOtp = async (to: string, otp: string, name: string) => {
   const subject = 'Your Email Verification Code';
-  const text = `Dear ${name},\nYour email verification code is: ${otp}\nThis code will expire in 10 minutes. If you did not create an account, please ignore this email.`;
-  const html = `<div>Dear ${name},<br><br>Your email verification code is: <b>${otp}</b><br><br>This code will expire in 10 minutes.<br>If you did not create an account, please ignore this email.</div>`;
+  const text = `Dear ${name},\nYour email verification code is: ${otp}\nThis code will expire in 5 minutes. If you did not create an account, please ignore this email.`;
+  const html = `<div>Dear ${name},<br><br>Your email verification code is: <b>${otp}</b><br><br>This code will expire in 5 minutes.<br>If you did not create an account, please ignore this email.</div>`;
   await sendEmail(to, subject, text, html);
 };
 
@@ -319,8 +419,8 @@ export const sendEmailVerificationOtp = async (to: string, otp: string, name: st
  */
 export const sendPasswordResetOtp = async (to: string, otp: string, name: string) => {
   const subject = 'Your Password Reset Code';
-  const text = `Dear ${name},\nYour password reset code is: ${otp}\nThis code will expire in 10 minutes. If you did not request a password reset, please ignore this email.`;
-  const html = `<div>Dear ${name},<br><br>Your password reset code is: <b>${otp}</b><br><br>This code will expire in 10 minutes.<br>If you did not request a password reset, please ignore this email.</div>`;
+  const text = `Dear ${name},\nYour password reset code is: ${otp}\nThis code will expire in 5 minutes. If you did not request a password reset, please ignore this email.`;
+  const html = `<div>Dear ${name},<br><br>Your password reset code is: <b>${otp}</b><br><br>This code will expire in 5 minutes.<br>If you did not request a password reset, please ignore this email.</div>`;
   await sendEmail(to, subject, text, html);
 };
 
@@ -347,10 +447,12 @@ export default {
   sendSecurityUpdateEmail,
   sendPasswordExpiryEmail,
   sendSuspiciousActivityEmail,
+  sendDeviceLoginEmail,
   sendPasswordChangeEmail,
   sendTwoFactorEmail,
-  sendDeviceLoginEmail,
   sendEmailVerificationOtp,
   sendPasswordResetOtp,
+  verifySmtpConnection,
+  checkEmailServiceHealth,
   transporter,
 };

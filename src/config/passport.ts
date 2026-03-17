@@ -1,7 +1,15 @@
 import prisma from '../client';
 import { Strategy as JwtStrategy, ExtractJwt, VerifyCallback } from 'passport-jwt';
 import config from './config';
-import { TokenType } from '@prisma/client';
+
+// Use string literal for TokenType to avoid Prisma import issues
+const TokenType = {
+  ACCESS: 'ACCESS',
+  REFRESH: 'REFRESH',
+  RESET_PASSWORD: 'RESET_PASSWORD',
+  VERIFY_EMAIL: 'VERIFY_EMAIL',
+  TWO_FACTOR: 'TWO_FACTOR',
+} as const;
 
 const jwtOptions = {
   secretOrKey: config.jwt.secret,

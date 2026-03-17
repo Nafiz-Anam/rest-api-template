@@ -105,8 +105,38 @@ const checkAccountLockout = {
 
 const verifyEmailOtp = {
   body: z.object({
-    userId: z.string().min(1, { message: 'User ID is required' }),
-    otp: z.string().length(6, { message: 'OTP must be exactly 6 characters' }),
+    token: z.string().min(1, { message: 'Verification token is required' }),
+    otp: z
+      .string()
+      .length(6, { message: 'OTP must be exactly 6 characters' })
+      .regex(/^\d{6}$/, { message: 'OTP must contain only numbers' }),
+  }),
+};
+
+const verifyEmailOtpWithValidation = {
+  body: z.object({
+    token: z
+      .string()
+      .min(1, { message: 'Verification token is required' })
+      .regex(/^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/, {
+        message: 'Invalid JWT token format',
+      }),
+    otp: z
+      .string()
+      .length(6, { message: 'OTP must be exactly 6 characters' })
+      .regex(/^\d{6}$/, { message: 'OTP must contain only numbers' }),
+  }),
+};
+
+const resendEmailVerificationOtp = {
+  body: z.object({
+    email: z.string().email({ message: 'Invalid email format' }),
+  }),
+};
+
+const resendPasswordResetOtp = {
+  body: z.object({
+    email: z.string().email({ message: 'Invalid email format' }),
   }),
 };
 
@@ -135,11 +165,14 @@ export default {
   resetPasswordWithOtp,
   verifyResetOtp,
   verifyEmail,
+  verifyEmailOtp,
+  verifyEmailOtpWithValidation,
+  resendEmailVerificationOtp,
+  resendPasswordResetOtp,
   verifyTwoFactor,
   changePassword,
   enableTwoFactor,
   disableTwoFactor,
   regenerateBackupCodes,
   checkAccountLockout,
-  verifyEmailOtp,
 };

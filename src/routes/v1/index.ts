@@ -1,6 +1,7 @@
 import express from 'express';
 import authRoute from './auth.route';
 import userRoute from './user.route';
+import meRoute from './me.routes';
 import docsRoute from './docs.route';
 import twoFactorRoute from './twoFactor.route';
 import deviceRoute from './device.route';
@@ -18,6 +19,10 @@ const defaultRoutes = [
   {
     path: '/users',
     route: userRoute,
+  },
+  {
+    path: '/me',
+    route: meRoute,
   },
   {
     path: '/2fa',
