@@ -1,7 +1,7 @@
-/* eslint-env node */
-/* global console, process */
 const swaggerJsdoc = require('swagger-jsdoc');
 const fs = require('fs');
+
+/* global console, process */
 
 // Import the swagger definition (we'll need to handle this differently for CommonJS)
 function getSwaggerDefinition() {

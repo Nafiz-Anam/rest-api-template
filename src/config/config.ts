@@ -28,9 +28,11 @@ let envVars: z.infer<typeof envVarsSchema>;
 try {
   envVars = envVarsSchema.parse(process.env);
 } catch (error) {
-  throw new Error(
+  const configError = new Error(
     `Config validation error: ${error instanceof z.ZodError ? error.issues[0]?.message : error.message}`
   );
+  configError.cause = error;
+  throw configError;
 }
 
 const config = {

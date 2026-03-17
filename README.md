@@ -432,3 +432,5 @@ Contributions are more than welcome! Please check out the [contributing guide](C
 ## License
 
 [MIT](LICENSE)
+
+# Updated documentation generation in pre-commit

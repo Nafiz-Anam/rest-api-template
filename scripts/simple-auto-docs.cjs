@@ -1,9 +1,8 @@
-/* eslint-env node */
-/* global console, process */
 const fs = require('fs');
 const path = require('path');
 const { glob } = require('glob');
 
+/* global console, process */
 // Simple auto-generator that reads route files and validation schemas
 async function generateSimpleOpenAPISpec() {
   const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf-8'));
@@ -120,19 +119,7 @@ function extractFieldsFromZod(content) {
   return fields;
 }
 
-function generateExample(fieldName) {
-  const examples = {
-    email: 'user@example.com',
-    password: 'password123',
-    name: 'John Doe',
-    id: 1,
-    role: 'USER',
-    token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-    refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
-  };
-
-  return examples[fieldName] || 'example';
-}
+// Main execution
 
 async function parseRouteFiles(spec) {
   try {

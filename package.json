@@ -52,6 +52,18 @@
     "eslint",
     "prettier"
   ],
+  "lint-staged": {
+    "*.{ts,js}": [
+      "prettier --write",
+      "eslint --fix"
+    ],
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ],
+    "docs/api-spec.json": [
+      "prettier --write"
+    ]
+  },
   "author": "Antonio Lázaro",
   "license": "ISC",
   "devDependencies": {

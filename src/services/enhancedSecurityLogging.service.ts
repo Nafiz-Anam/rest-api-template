@@ -73,9 +73,9 @@ class EnhancedSecurityLoggingService {
     success: boolean
   ): { category: SecurityCategory; severity: SecuritySeverity; riskScore: number } {
     // Default categorization
-    let category = SecurityCategory.SYSTEM_SECURITY;
-    let severity = SecuritySeverity.LOW;
-    let riskScore = 1;
+    let category: SecurityCategory;
+    let severity: SecuritySeverity;
+    let riskScore: number;
 
     switch (eventType) {
       case SecurityEventType.LOGIN_SUCCESS:
