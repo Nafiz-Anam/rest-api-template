@@ -23,7 +23,7 @@ prisma
       tokenCleanupService.scheduleTokenCleanup(15);
     });
   })
-  .catch(error => {
+  .catch((error: Error) => {
     logger.error('Failed to connect to database:', error);
     process.exit(1);
   });

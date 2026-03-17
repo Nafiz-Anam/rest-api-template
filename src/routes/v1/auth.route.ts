@@ -151,8 +151,30 @@ router.post('/verify-email', validate(authValidation.verifyEmail), authControlle
  */
 router.post(
   '/verify-email-otp',
-  validate(authValidation.verifyEmailOtp),
+  validate(authValidation.verifyEmailOtpWithValidation),
   authController.verifyEmailOtp
+);
+
+/**
+ * @route POST /v1/auth/resend-email-verification
+ * @desc Resend email verification OTP
+ * @access Public
+ */
+router.post(
+  '/resend-email-verification',
+  validate(authValidation.resendEmailVerificationOtp),
+  authController.resendEmailVerification
+);
+
+/**
+ * @route POST /v1/auth/resend-password-reset
+ * @desc Resend password reset OTP
+ * @access Public
+ */
+router.post(
+  '/resend-password-reset',
+  validate(authValidation.resendPasswordResetOtp),
+  authController.resendPasswordReset
 );
 
 /**

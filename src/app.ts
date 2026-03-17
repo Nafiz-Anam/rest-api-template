@@ -15,10 +15,13 @@ import {
   registrationLimiter,
 } from './middlewares/rateLimiter';
 import { performanceTracker, addPerformanceHeaders } from './middlewares/performanceMonitoring';
+import { addRequestId } from './middlewares/requestId';
+import { sanitizeInput } from './middlewares/sanitize';
 import routes from './routes/v1';
 import { healthController } from './controllers';
-import { errorConverter, errorHandler } from './middlewares/error';
+import { errorConverter, errorHandler } from './utils/errorHandler';
 import ApiError from './utils/ApiError';
+import { requestLogger } from './utils/structuredLogger';
 
 const app = express();
 
@@ -36,7 +39,14 @@ app.use(express.json());
 // parse urlencoded request body
 app.use(express.urlencoded({ extended: true }));
 
+// add request ID for tracking
+app.use(addRequestId);
+
+// add structured logging
+app.use(requestLogger);
+
 // sanitize request data
+app.use(sanitizeInput);
 app.use(xss());
 
 // gzip compression
@@ -56,8 +66,12 @@ app.use(addPerformanceHeaders);
 
 // Health check routes (no rate limiting)
 app.get('/v1/health', healthController.healthCheck);
-app.get('/v1/health/db', healthController.databaseHealthCheck);
+app.get('/v1/health/database', healthController.databaseHealthCheck);
+app.get('/v1/health/email', healthController.emailHealthCheck);
+app.get('/v1/health/cache', healthController.cacheHealthCheck);
 app.get('/v1/health/detailed', healthController.detailedHealthCheck);
+app.get('/v1/health/ready', healthController.readinessCheck);
+app.get('/v1/health/live', healthController.livenessCheck);
 
 // Global rate limiting - apply to all API endpoints
 app.use('/v1', apiLimiter);
@@ -79,6 +93,29 @@ if (config.env === 'production') {
 
 // v1 api routes
 app.use('/v1', routes);
+
+// Welcome endpoint for root URL
+app.get('/', (req, res) => {
+  res.json({
+    success: true,
+    message: '🚀 Welcome to the REST API Boilerplate!',
+    data: {
+      name: 'Prisma Express TypeScript Boilerplate',
+      version: '1.0.0',
+      environment: config.env || 'development',
+      endpoints: {
+        health: '/v1/health',
+        documentation: '/v1/docs',
+        api: '/v1',
+      },
+      links: {
+        health_check: `${req.protocol}://${req.get('host')}/v1/health`,
+        api_docs: `${req.protocol}://${req.get('host')}/v1/docs`,
+        github: 'https://github.com/antonio-lazaro/prisma-express-typescript-boilerplate',
+      },
+    },
+  });
+});
 
 // send back a 404 error for any unknown api request
 app.use((req, res, next) => {

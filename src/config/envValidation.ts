@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const envVarsSchema = z.object({
   NODE_ENV: z.enum(['production', 'development', 'test']),
-  PORT: z.number().default(3000),
+  PORT: z.number().default(8000),
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string(),
   JWT_ACCESS_EXPIRATION_MINUTES: z.number().default(30),
@@ -20,9 +20,9 @@ let envVars: z.infer<typeof envVarsSchema>;
 try {
   envVars = envVarsSchema.parse(process.env);
 } catch (error) {
-  throw new Error(
-    `Config validation error: ${error instanceof z.ZodError ? error.issues[0]?.message : error.message}`
-  );
+  const errorMessage =
+    error instanceof z.ZodError ? error.issues[0]?.message : (error as Error).message;
+  throw new Error(`Config validation error: ${errorMessage}`);
 }
 
 const config = {
@@ -48,7 +48,7 @@ const config = {
     from: envVars.EMAIL_FROM,
   },
   cors: {
-    origins: envVars.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+    origins: envVars.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8000'],
   },
 };
 

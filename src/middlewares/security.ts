@@ -23,7 +23,7 @@ export const rateLimitConfig = {
 };
 
 export const corsConfig = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:8000'],
   credentials: true,
   optionsSuccessStatus: 200,
 };
