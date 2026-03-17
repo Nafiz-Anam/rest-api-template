@@ -8,6 +8,7 @@ import {
   notificationService,
   securityLoggingService,
 } from '../services';
+import exportService from '../services/export.service';
 import ApiError from '../utils/ApiError';
 import { Request, Response } from 'express';
 import pick from '../utils/pick';
@@ -421,6 +422,45 @@ const forcePasswordChange = catchAsync(async (req: Request, res: Response) => {
   res.send(user);
 });
 
+/**
+ * Export users list
+ * @route GET /v1/users/export
+ * @access Private (Admin only)
+ */
+const exportUsers = catchAsync(async (req: Request, res: Response) => {
+  const { format } = req.query as { format: 'pdf' | 'excel' };
+
+  // Build filter and options from query params
+  const filter = pick(req.query, [
+    'name',
+    'email',
+    'role',
+    'isActive',
+    'isEmailVerified',
+    'country',
+    'state',
+    'city',
+    'phone',
+    'gender',
+  ]);
+  const options = pick(req.query, ['sortBy', 'sortOrder', 'search', 'limit']);
+
+  // Set default limit for export
+  options.limit = Math.min(Number(options.limit) || 100, 1000);
+
+  // Get users with filters
+  const result = await userService.queryUsers(filter, options);
+
+  // Export based on format
+  if (format === 'pdf') {
+    await exportService.exportUsersToPDF(result.results, res);
+  } else if (format === 'excel') {
+    await exportService.exportUsersToExcel(result.results, res);
+  } else {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Invalid export format');
+  }
+});
+
 export default {
   createUser,
   getUsers,
@@ -457,4 +497,5 @@ export default {
   getLockedUsers,
   unlockUserAccount,
   forcePasswordChange,
+  exportUsers,
 };

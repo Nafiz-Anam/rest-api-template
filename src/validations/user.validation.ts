@@ -1,6 +1,5 @@
 import { Role } from '@prisma/client';
 import { z } from 'zod';
-import { password } from './custom.validation';
 
 const createUser = {
   body: z.object({
@@ -17,16 +16,20 @@ const createUser = {
 const getUsers = {
   query: z.object({
     name: z.string().optional(),
+    email: z.string().email().optional(),
     role: z.enum([Role.USER, Role.ADMIN]).optional(),
     isActive: z.boolean().optional(),
     isEmailVerified: z.boolean().optional(),
+    country: z.string().optional(),
+    state: z.string().optional(),
+    city: z.string().optional(),
+    phone: z.string().optional(),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
     sortBy: z.string().optional(),
-    limit: z.coerce
-      .number()
-      .min(1, { message: 'Limit must be at least 1' })
-      .max(100, { message: 'Limit cannot exceed 100' })
-      .optional(),
-    page: z.coerce.number().min(1, { message: 'Page must be at least 1' }).optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('desc'),
+    limit: z.coerce.number().integer().min(1).max(100).default(10),
+    page: z.coerce.number().integer().min(1).default(1),
+    search: z.string().optional(), // Global search across name, email, phone
   }),
 };
 
@@ -72,25 +75,19 @@ const updateUserProfile = {
     userId: z.string().min(1, { message: 'User ID is required' }),
   }),
   body: z.object({
-    name: z
-      .string()
-      .min(1, { message: 'Name must be at least 1 character' })
-      .max(100, { message: 'Name cannot exceed 100 characters' })
-      .optional(),
-    avatar: z.string().url({ message: 'Avatar must be a valid URL' }).optional(),
-    bio: z.string().max(500, { message: 'Bio cannot exceed 500 characters' }).optional(),
+    name: z.string().min(1).max(100).optional(),
     phone: z
       .string()
-      .regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone number format' })
+      .regex(/^\+?[\d\s\-()]+$/)
       .optional(),
-    dateOfBirth: z
-      .date()
-      .max(new Date(), { message: 'Date of birth cannot be in future' })
-      .optional(),
-    gender: z.enum(['male', 'female', 'other', 'prefer_not_to_say']).optional(),
-    location: z.string().max(200, { message: 'Location cannot exceed 200 characters' }).optional(),
-    timezone: z.string().optional(),
-    language: z.enum(['en', 'es', 'fr', 'de', 'it', 'pt', 'ru', 'zh', 'ja', 'ko']).optional(),
+    phoneCode: z.string().optional(),
+    country: z.string().max(100).optional(),
+    state: z.string().max(100).optional(),
+    city: z.string().max(100).optional(),
+    address: z.string().max(500).optional(),
+    profilePicture: z.string().url().optional(),
+    dateOfBirth: z.date().max(new Date()).optional(),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
   }),
 };
 
@@ -333,6 +330,27 @@ const forcePasswordChange = {
   }),
 };
 
+// Export functionality
+const exportUsers = {
+  query: z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional(),
+    role: z.enum([Role.USER, Role.ADMIN]).optional(),
+    isActive: z.boolean().optional(),
+    isEmailVerified: z.boolean().optional(),
+    country: z.string().optional(),
+    state: z.string().optional(),
+    city: z.string().optional(),
+    phone: z.string().optional(),
+    gender: z.enum(['MALE', 'FEMALE', 'OTHER', 'PREFER_NOT_TO_SAY']).optional(),
+    sortBy: z.string().optional(),
+    sortOrder: z.enum(['asc', 'desc']).default('desc'),
+    search: z.string().optional(),
+    format: z.enum(['pdf', 'excel']),
+    limit: z.coerce.number().integer().min(1).max(1000).default(100),
+  }),
+};
+
 export default {
   createUser,
   getUsers,
@@ -365,4 +383,5 @@ export default {
   getUsersWithExpiringPasswords,
   unlockUserAccount,
   forcePasswordChange,
+  exportUsers,
 };

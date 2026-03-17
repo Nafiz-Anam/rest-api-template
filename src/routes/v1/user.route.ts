@@ -387,6 +387,18 @@ router.patch(
   userController.forcePasswordChange
 );
 
+/**
+ * @route GET /v1/users/export
+ * @desc Export users list (Admin only)
+ * @access Private (Admin only)
+ */
+router.get(
+  '/export',
+  auth(Role.ADMIN),
+  validate(userValidation.exportUsers),
+  userController.exportUsers
+);
+
 export default router;
 
 /**

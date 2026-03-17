@@ -96,17 +96,67 @@ const deleteUserById = async (userId: string) => {
 };
 
 /**
- * Query users
- * @param {Object} filter - Mongo filter
+ * Query for users with advanced filtering, search, and pagination
+ * @param {Object} filter - Filter criteria
  * @param {Object} options - Query options
  * @param {string} [options.sortBy] - Sort option in the format: sortField:(desc|asc)
  * @param {number} [options.limit] - Maximum number of results per page (default = 10)
  * @param {number} [options.page] - Current page (default = 1)
+ * @param {string} [options.search] - Global search across name, email, phone
  * @returns {Promise<QueryResult>}
  */
 const queryUsers = async (filter: any, options: any) => {
+  // Build where clause with advanced filtering
+  let whereClause: any = {};
+
+  // Basic filters
+  if (filter.name) {
+    whereClause.name = { contains: filter.name, mode: 'insensitive' };
+  }
+  if (filter.email) {
+    whereClause.email = { contains: filter.email, mode: 'insensitive' };
+  }
+  if (filter.role) {
+    whereClause.role = filter.role;
+  }
+  if (filter.isActive !== undefined) {
+    whereClause.isActive = filter.isActive;
+  }
+  if (filter.isEmailVerified !== undefined) {
+    whereClause.isEmailVerified = filter.isEmailVerified;
+  }
+
+  // New profile field filters
+  if (filter.country) {
+    whereClause.country = { contains: filter.country, mode: 'insensitive' };
+  }
+  if (filter.state) {
+    whereClause.state = { contains: filter.state, mode: 'insensitive' };
+  }
+  if (filter.city) {
+    whereClause.city = { contains: filter.city, mode: 'insensitive' };
+  }
+  if (filter.phone) {
+    whereClause.phone = { contains: filter.phone };
+  }
+  if (filter.gender) {
+    whereClause.gender = filter.gender;
+  }
+
+  // Global search across multiple fields
+  if (options.search) {
+    whereClause.OR = [
+      { name: { contains: options.search, mode: 'insensitive' } },
+      { email: { contains: options.search, mode: 'insensitive' } },
+      { phone: { contains: options.search } },
+      { country: { contains: options.search, mode: 'insensitive' } },
+      { state: { contains: options.search, mode: 'insensitive' } },
+      { city: { contains: options.search, mode: 'insensitive' } },
+    ];
+  }
+
   const users = await prisma.user.findMany({
-    where: filter,
+    where: whereClause,
     select: {
       id: true,
       email: true,
@@ -118,6 +168,16 @@ const queryUsers = async (filter: any, options: any) => {
       lastLoginAt: true,
       createdAt: true,
       updatedAt: true,
+      // Include new profile fields
+      phone: true,
+      phoneCode: true,
+      country: true,
+      state: true,
+      city: true,
+      address: true,
+      profilePicture: true,
+      dateOfBirth: true,
+      gender: true,
     },
     orderBy: options.sortBy
       ? { [options.sortBy]: options.sortOrder || 'desc' }
@@ -126,7 +186,7 @@ const queryUsers = async (filter: any, options: any) => {
     take: options.limit,
   });
 
-  const total = await prisma.user.count({ where: filter });
+  const total = await prisma.user.count({ where: whereClause });
 
   return {
     results: users,
@@ -150,11 +210,13 @@ const getUserProfile = async (userId: string) => {
       email: true,
       name: true,
       role: true,
-      avatar: true,
-      bio: true,
-      location: true,
-      website: true,
+      profilePicture: true,
       phone: true,
+      phoneCode: true,
+      country: true,
+      state: true,
+      city: true,
+      address: true,
       dateOfBirth: true,
       gender: true,
       isEmailVerified: true,
@@ -191,11 +253,13 @@ const updateUserProfile = async (userId: string, updateBody: any) => {
       id: true,
       email: true,
       name: true,
-      avatar: true,
-      bio: true,
-      location: true,
-      website: true,
+      profilePicture: true,
       phone: true,
+      phoneCode: true,
+      country: true,
+      state: true,
+      city: true,
+      address: true,
       dateOfBirth: true,
       gender: true,
     },
@@ -212,11 +276,13 @@ const updateUserProfile = async (userId: string, updateBody: any) => {
       id: true,
       email: true,
       name: true,
-      avatar: true,
-      bio: true,
-      location: true,
-      website: true,
+      profilePicture: true,
       phone: true,
+      phoneCode: true,
+      country: true,
+      state: true,
+      city: true,
+      address: true,
       dateOfBirth: true,
       gender: true,
       updatedAt: true,
