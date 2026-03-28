@@ -771,7 +771,7 @@ docker-compose -f docker-compose.prod.yml logs -f
 docker-compose -f docker-compose.monitoring.yml up -d
 
 # Access services
-# Grafana: http://localhost:3000
+# Grafana: http://localhost:4000
 # Prometheus: http://localhost:9090
 # Jaeger: http://localhost:16686
 ```

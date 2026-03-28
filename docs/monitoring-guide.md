@@ -31,14 +31,14 @@ docker-compose -f docker-compose.monitoring.yml logs -f
 ### **Access the Services**
 
 | Service          | URL                    | Credentials | Purpose                    |
-| ---------------- | ---------------------- | ----------- | -------------------------- |
-| **Grafana**      | http://localhost:3000  | admin/admin | Dashboards & Visualization |
+| ---------------- | ---------------------- | ----------- | -------------------------- | --- |
+| **Grafana**      | http://localhost:4000  | admin/admin | Dashboards & Visualization |
 | **Prometheus**   | http://localhost:9090  | -           | Metrics Query & Storage    |
 | **Jaeger**       | http://localhost:16686 | -           | Distributed Tracing        |
 | **AlertManager** | http://localhost:9093  | -           | Alert Management           |
-| **Loki**         | http://localhost:3100  | -           | Log Aggregation API        |
+| **Loki**         | http://localhost:3100  | -           | Log Aggregation API        |     |
 
-## 📊 Grafana Dashboards
+## Grafana Dashboards
 
 ### **Pre-built Dashboards**
 
