@@ -3,7 +3,6 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import config from '../config/config';
 import prisma from '../client';
-import { getPushNotificationService } from '../services/pushNotification.service';
 
 // Notification types from Prisma schema
 enum NotificationType {

@@ -7,6 +7,7 @@ import twoFactorRoute from './twoFactor.route';
 import deviceRoute from './device.route';
 import profileRoute from './profile.route';
 import ipSecurityRoute from './ipSecurity.route';
+import pushNotificationRoute from './pushNotification.route';
 import config from '../../config/config';
 
 const router = express.Router();
@@ -39,6 +40,10 @@ const defaultRoutes = [
   {
     path: '/ip-security',
     route: ipSecurityRoute,
+  },
+  {
+    path: '/users',
+    route: pushNotificationRoute,
   },
 ];
 

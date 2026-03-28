@@ -144,3 +144,30 @@ export const sensitiveOperationLimiter = rateLimit({
     return ipKeyGenerator(req.ip || '127.0.0.1');
   },
 });
+
+// Rate limiter for push notification endpoints (prevent spam)
+export const pushNotificationLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: config.env === 'production' ? 10 : 20, // 10 notifications per minute in prod, 20 in dev
+  message: {
+    error: 'Too many push notifications, please try again later',
+    retryAfter: '1 minute',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      code: 429,
+      message: 'Too many push notifications, please try again later',
+      retryAfter: Math.ceil(1 * 60), // 1 minute in seconds
+    });
+  },
+  keyGenerator: (req: Request) => {
+    // Use authenticated user ID if available, otherwise IP
+    const authReq = req as AuthenticatedRequest;
+    if (authReq.user?.id) {
+      return authReq.user.id.toString();
+    }
+    return ipKeyGenerator(req.ip || '127.0.0.1');
+  },
+});
