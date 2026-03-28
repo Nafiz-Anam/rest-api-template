@@ -5,6 +5,10 @@ import config from './config/config';
 import logger from './config/logger';
 import tokenCleanupService from './services/tokenCleanup.service';
 import { initializeWebSocket } from './controllers/websocket.controller';
+import { initializeTracing } from './utils/tracing';
+
+// Initialize OpenTelemetry tracing
+initializeTracing();
 
 logger.debug('Starting application initialization...');
 
