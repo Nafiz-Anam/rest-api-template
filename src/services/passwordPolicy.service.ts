@@ -263,7 +263,7 @@ class PasswordPolicyService {
     if (/[a-z]/.test(password)) score += 10;
     if (/[A-Z]/.test(password)) score += 10;
     if (/\d/.test(password)) score += 10;
-    if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) score += 10;
+    if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) score += 10;
 
     // Pattern complexity (0-30 points)
     const uniqueChars = new Set(password).size;

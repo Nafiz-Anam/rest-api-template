@@ -1,6 +1,8 @@
 import prisma from '../client';
 import { Strategy as JwtStrategy, ExtractJwt, VerifyCallback } from 'passport-jwt';
 import config from './config';
+import setupGoogleStrategy from '../strategies/google.strategy';
+import setupGitHubStrategy from '../strategies/github.strategy';
 
 // Use string literal for TokenType to avoid Prisma import issues
 const TokenType = {
@@ -39,3 +41,15 @@ const jwtVerify: VerifyCallback = async (payload, done) => {
 };
 
 export const jwtStrategy = new JwtStrategy(jwtOptions, jwtVerify);
+
+/**
+ * Setup all passport strategies
+ */
+export const setupPassportStrategies = (passport: any): void => {
+  // Setup JWT strategy
+  passport.use(jwtStrategy);
+
+  // Setup OAuth strategies
+  setupGoogleStrategy(passport);
+  setupGitHubStrategy(passport);
+};

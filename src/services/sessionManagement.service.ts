@@ -390,7 +390,7 @@ class SessionManagementService {
     totalSessions: number;
     activeSessions: number;
     recentLogins: UserSession[];
-    securityEvents: SessionSecurityEvent[];
+    analyticsSecurityEvents: SessionSecurityEvent[];
   }> {
     const where = userId ? { userId } : {};
 
@@ -418,38 +418,41 @@ class SessionManagementService {
       }),
     ]);
 
-    let securityEvents: SessionSecurityEvent[] = [];
+    const securityEvents = await (async () => {
+      if (userId) {
+        const userSessions = await prisma.userSession.findMany({
+          where: { userId },
+          select: { sessionId: true },
+        });
 
-    if (userId) {
-      const userSessions = await prisma.userSession.findMany({
-        where: { userId },
-        select: { sessionId: true },
-      });
+        const sessionIds = userSessions.map(s => s.sessionId);
 
-      const sessionIds = userSessions.map(s => s.sessionId);
-
-      securityEvents = await prisma.sessionSecurityEvent.findMany({
-        where: {
-          sessionId: {
-            in: sessionIds,
+        return await prisma.sessionSecurityEvent.findMany({
+          where: {
+            sessionId: {
+              in: sessionIds,
+            },
+            resolved: false,
           },
-          resolved: false,
-        },
-        orderBy: { timestamp: 'desc' },
-        take: 10,
-      });
-    } else {
-      securityEvents = await prisma.sessionSecurityEvent.findMany({
-        orderBy: { timestamp: 'desc' },
-        take: 10,
-      });
-    }
+          orderBy: { timestamp: 'desc' },
+          take: 10,
+        });
+      } else {
+        return await prisma.sessionSecurityEvent.findMany({
+          where: {
+            resolved: false,
+          },
+          orderBy: { timestamp: 'desc' },
+          take: 10,
+        });
+      }
+    })();
 
     return {
       totalSessions,
       activeSessions,
       recentLogins,
-      securityEvents,
+      analyticsSecurityEvents: securityEvents,
     };
   }
 

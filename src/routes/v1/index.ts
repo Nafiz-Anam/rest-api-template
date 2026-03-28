@@ -8,6 +8,11 @@ import deviceRoute from './device.route';
 import profileRoute from './profile.route';
 import ipSecurityRoute from './ipSecurity.route';
 import pushNotificationRoute from './pushNotification.route';
+import socialAuthRoute from './socialAuth.route';
+import roleRoute from './role.route';
+import passwordPolicyRoute from './passwordPolicy.route';
+import auditLogRoute from './auditLog.route';
+import sessionManagementRoute from './sessionManagement.route';
 import config from '../../config/config';
 
 const router = express.Router();
@@ -44,6 +49,26 @@ const defaultRoutes = [
   {
     path: '/users',
     route: pushNotificationRoute,
+  },
+  {
+    path: '/auth',
+    route: socialAuthRoute,
+  },
+  {
+    path: '/roles',
+    route: roleRoute,
+  },
+  {
+    path: '/password-policies',
+    route: passwordPolicyRoute,
+  },
+  {
+    path: '/audit-logs',
+    route: auditLogRoute,
+  },
+  {
+    path: '/sessions',
+    route: sessionManagementRoute,
   },
 ];
 
