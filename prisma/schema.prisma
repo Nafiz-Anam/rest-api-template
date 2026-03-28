@@ -83,7 +83,7 @@ model User {
   
   // Preferences
   emailNotifications  Json?    @default("{}")
-  privacySettings     Json?    @default("{}")
+  pushNotifications   Json?    @default("{}")
   preferences         Json?    @default("{}")
   
   // Timestamps

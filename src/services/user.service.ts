@@ -224,7 +224,7 @@ const getUserProfile = async (userId: string) => {
       lastLoginAt: true,
       createdAt: true,
       updatedAt: true,
-      privacySettings: true,
+      preferences: true,
     },
   });
 
@@ -232,11 +232,11 @@ const getUserProfile = async (userId: string) => {
     throw new ApiError(httpStatus.NOT_FOUND, 'User not found');
   }
 
-  const privacySettings = user.privacySettings || {};
+  const privacySettings = user.preferences || {};
 
   return {
     ...user,
-    privacySettings,
+    preferences: privacySettings,
   };
 };
 
@@ -302,7 +302,6 @@ const getUserPreferences = async (userId: string) => {
     where: { id: userId },
     select: {
       emailNotifications: true,
-      privacySettings: true,
       preferences: true,
     },
   });
@@ -313,7 +312,6 @@ const getUserPreferences = async (userId: string) => {
 
   return {
     emailNotifications: user.emailNotifications || {},
-    privacySettings: user.privacySettings || {},
     preferences: user.preferences || {},
   };
 };
@@ -329,7 +327,6 @@ const updateUserPreferences = async (userId: string, updateBody: any) => {
     where: { id: userId },
     select: {
       emailNotifications: true,
-      privacySettings: true,
       preferences: true,
     },
   });
@@ -343,7 +340,6 @@ const updateUserPreferences = async (userId: string, updateBody: any) => {
     data: updateBody,
     select: {
       emailNotifications: true,
-      privacySettings: true,
       preferences: true,
       updatedAt: true,
     },

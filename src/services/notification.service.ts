@@ -1,9 +1,20 @@
 import { Request } from 'express';
-import { NotificationType } from '@prisma/client';
 import prisma from '../client';
 import emailService from './email.service';
 import ApiError from '../utils/ApiError';
 import httpStatus from 'http-status';
+
+// Notification types from Prisma schema
+enum NotificationType {
+  LOGIN_ALERT,
+  PASSWORD_CHANGE,
+  EMAIL_VERIFICATION,
+  TWO_FACTOR_SETUP,
+  ACCOUNT_LOCKED,
+  SECURITY_ALERT,
+  SYSTEM_UPDATE,
+  WELCOME,
+}
 
 /**
  * Create a new notification
@@ -16,12 +27,12 @@ import httpStatus from 'http-status';
  */
 const createNotification = async (
   userId: string,
-  type: NotificationType,
+  type: any, // Using any to avoid circular dependency with NotificationType enum
   title: string,
   message: string,
   metadata: Record<string, any> = {}
 ): Promise<any> => {
-  return prisma.notification.create({
+  const notification = await prisma.notification.create({
     data: {
       userId,
       type,
@@ -31,6 +42,25 @@ const createNotification = async (
       isRead: false,
     },
   });
+
+  // Send push notification if WebSocket service is available
+  try {
+    const { getWebSocketController } = await import('../controllers/websocket.controller');
+    const wsController = getWebSocketController();
+    if (wsController) {
+      await wsController.sendPushNotification(userId, {
+        type,
+        title,
+        message,
+        metadata,
+      });
+    }
+  } catch (error) {
+    // WebSocket service not initialized, which is fine for some operations
+    console.log('WebSocket service not available for push notification');
+  }
+
+  return notification;
 };
 
 /**

@@ -4,6 +4,7 @@ import prisma from './client';
 import config from './config/config';
 import logger from './config/logger';
 import tokenCleanupService from './services/tokenCleanup.service';
+import { initializeWebSocket } from './controllers/websocket.controller';
 
 logger.debug('Starting application initialization...');
 
@@ -13,10 +14,15 @@ prisma
   .then(() => {
     logger.info('Connected to SQL Database');
     logger.debug('Attempting to start HTTP server...');
+
+    // Initialize WebSocket server
+    initializeWebSocket();
+
     server = app.listen(config.port, () => {
       logger.info(`Listening to port ${config.port}`);
       logger.info(`🚀 API Server running at http://localhost:${config.port}`);
       logger.info(`📚 API Documentation available at http://localhost:${config.port}/v1/docs`);
+      logger.info(`🔌 WebSocket server running on port ${process.env.WS_PORT || '8080'}`);
       logger.debug('Server started successfully');
 
       // Schedule token cleanup to run every 15 minutes

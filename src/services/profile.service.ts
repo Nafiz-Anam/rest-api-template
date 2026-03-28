@@ -191,7 +191,6 @@ export class ProfileService {
       select: {
         id: true,
         emailNotifications: true,
-        privacySettings: true,
         preferences: true,
       },
     });

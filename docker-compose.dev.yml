@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - .:/usr/src/node-app
       - /usr/src/node-app/node_modules
@@ -17,12 +17,14 @@ services:
       - node-network
 
   redis:
-    image: redis:7-alpine
+    image: redis/redis-stack-server:latest
     container_name: redis-dev
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
+      - ./docker/redis.conf:/usr/local/etc/redis/redis.conf
+    command: redis-server /usr/local/etc/redis/redis.conf
     networks:
       - node-network
     healthcheck:
@@ -31,8 +33,22 @@ services:
       timeout: 3s
       retries: 3
 
+  redis-insight:
+    image: redis/redisinsight:latest
+    container_name: redis-insight-dev
+    ports:
+      - "8002:5540"
+    volumes:
+      - redis_insight_data:/data
+    networks:
+      - node-network
+    depends_on:
+      - redis
+
 volumes:
   redis_data:
+    driver: local
+  redis_insight_data:
     driver: local
 
 networks:

@@ -8,15 +8,15 @@ This guide explains how to set up and run the Node.js/TypeScript REST API using 
 ┌─────────────────────────────────────────────────────────────┐
 │                    Development Environment                     │
 ├─────────────────────────────────────────────────────────────┤
-│  ┌─────────────────┐  ┌─────────────────┐                         │
-│  │   App Container │  │  Redis Container │                         │
-│  │   (Node.js)     │  │   (Redis)        │                         │
-│  │                 │  │                 │                         │
-│  │ • Hot Reload     │  │ • In-Memory     │                         │
-│  │ • Volume Mount   │  │ • Data         │                         │
-│  │ • Dev Tools      │  │ • Port 6379     │                         │
-│  │ • Port 8000      │  │                 │                         │
-│  └─────────────────┘  └─────────────────┘                         │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   App Container │  │  Redis Stack     │  │  Redis Insight    │  │
+│  │   (Node.js)     │  │   Server         │  │   (Web GUI)      │  │
+│  │                 │  │                 │  │                 │  │
+│  │ • Hot Reload     │  │ • In-Memory     │  │ • Data Browser   │  │
+│  │ • Volume Mount   │  │ • Data         │  │ • Search         │  │
+│  │ • Dev Tools      │  │ • Port 6379     │  │ • CLI Access    │  │
+│  │ • Port 8000      │  │                 │  │ • Port 8001     │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────┘  │
 │                                                             │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │              Docker Network (bridge)                      │ │
@@ -70,6 +70,9 @@ curl http://localhost:8000/v1/health/email
 
 # Check Redis connection
 docker exec redis-dev redis-cli ping
+
+# Access Redis Insight GUI
+# Open http://localhost:8001 in your browser
 ```
 
 ## 📋 Available Commands
@@ -83,11 +86,17 @@ npm run docker:dev-build
 # Start development environment (with hot reload)
 npm run docker:dev
 
-# Stop development environment
-npm run docker:dev-down
+# Access Redis Insight
+npm run docker:redis-insight
+
+# Access Redis CLI
+npm run docker:redis-cli
 
 # View logs
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml logs -f
+npm run docker:dev-logs
+
+# Stop development environment
+npm run docker:dev-down
 ```
 
 ### Production Commands
@@ -99,21 +108,84 @@ npm run docker:prod-build
 # Start production environment
 npm run docker:prod
 
+# Start production with tools (Redis Insight)
+npm run docker:prod-tools
+
 # Stop production environment
 npm run docker:prod-down
+```
+
+### Redis Management with Redis Insight
+
+```bash
+# Access Redis Insight
+# Open http://localhost:8001 in your browser
+npm run docker:redis-insight
+
+# Access Redis CLI
+npm run docker:redis-cli
+
+# Connect to Redis directly
+docker exec -it redis-dev redis-cli
+
+# Monitor Redis in real-time
+docker exec -it redis-dev redis-cli MONITOR
+
+# Check Redis info
+docker exec -it redis-dev redis-cli INFO
+
+# View Redis Insight features:
+# - Data browser with search capabilities
+# - Real-time analytics and monitoring
+# - CLI access directly from the web interface
+# - Memory usage analysis
+# - Slow log analysis
 ```
 
 ## 🔧 Configuration
 
 ### Environment Variables
 
-| Variable       | Description         | Development         | Production          |
-| -------------- | ------------------- | ------------------- | ------------------- |
-| `DATABASE_URL` | External PostgreSQL | Your Neon URL       | Your AWS RDS URL    |
-| `REDIS_HOST`   | Redis host          | `redis` (container) | `redis` (container) |
-| `REDIS_PORT`   | Redis port          | `6379`              | `6379`              |
-| `JWT_SECRET`   | JWT signing key     | Any secure string   | Any secure string   |
-| `SMTP_HOST`    | Email server        | `smtp.gmail.com`    | `smtp.gmail.com`    |
+| Variable         | Description         | Development         | Production          |
+| ---------------- | ------------------- | ------------------- | ------------------- |
+| `DATABASE_URL`   | External PostgreSQL | Your Neon URL       | Your AWS RDS URL    |
+| `REDIS_HOST`     | Redis host          | `redis` (container) | `redis` (container) |
+| `REDIS_PORT`     | Redis port          | `6379`              | `6379`              |
+| `REDIS_PASSWORD` | Redis password      | (none)              | (none)              |
+| `REDIS_DB`       | Redis database      | `0`                 | `0`                 |
+| `JWT_SECRET`     | JWT signing key     | Any secure string   | Any secure string   |
+
+## 🚀 Redis Stack with Redis Insight
+
+### **Architecture:**
+
+- **Redis Stack Server**: Redis with additional modules (JSON, Search, Time Series, etc.)
+- **Redis Insight**: Separate container providing the web GUI
+- **Connection**: Redis Insight connects to Redis Stack Server via Docker network
+
+### **Redis Insight Features:**
+
+- **🔍 Advanced Data Browser** - Visualize all Redis data types
+- **🔎 Search Functionality** - Search across keys and values
+- **📊 Real-time Analytics** - Monitor performance metrics
+- **🛠️ CLI Access** - Run Redis commands directly in browser
+- **📈 Memory Analysis** - Track memory usage and fragmentation
+- **⚡ Slow Log Analysis** - Identify performance bottlenecks
+- **🔧 Configuration Management** - Edit Redis settings via GUI
+
+### **Redis Stack vs Basic Redis:**
+
+- ✅ **All Redis features** (Strings, Lists, Sets, Hashes, etc.)
+- ✅ **Redis Modules** (JSON, Search, Time Series, Graph, etc.)
+- ✅ **Enhanced Performance** (optimized binaries)
+- ✅ **Separate GUI** (Redis Insight in dedicated container)
+
+### **Access Methods:**
+
+- **Web Interface**: `http://localhost:8001`
+- **CLI**: `npm run docker:redis-cli`
+- **Direct Connection**: `docker exec -it redis-dev redis-cli`
+  | `SMTP_HOST` | Email server | `smtp.gmail.com` | `smtp.gmail.com` |
 
 ### Database Setup
 
