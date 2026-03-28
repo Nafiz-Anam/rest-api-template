@@ -10,3 +10,10 @@ export { default as securityLoggingService } from './securityLogging.service';
 export { default as userActivityService } from './userActivity.service';
 export { ProfileService as profileService } from './profile.service';
 export { default as ipSecurityService } from './ipSecurityManagement.service';
+
+// Phase 1 Core Features Services
+export { default as socialAuthService } from './socialAuth.service';
+export { default as rbacService } from './rbac.service';
+export { default as passwordPolicyService } from './passwordPolicy.service';
+export { default as auditLogService } from './auditLog.service';
+export { default as sessionManagementService } from './sessionManagement.service';
